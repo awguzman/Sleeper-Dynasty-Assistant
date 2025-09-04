@@ -6,13 +6,6 @@ def get_id_map() -> pd.DataFrame:
     """
     Generates a DataFrame mapping player names and teams to their Sleeper and FantasyPros IDs.
 
-    The function performs the following steps:
-    1. Imports player ID data from nfl_data_py and Selects the relevant ID columns
-    2. Selects the relevant ID columns ('name', 'team', 'sleeper_id', 'fantasypros_id').
-    3. Creates a composite 'Player' column (e.g., "Dan Marino MIA").
-    4. Removes rows where either 'sleeper_id' or 'fantasypros_id' is missing.
-    5. Resets the DataFrame index.
-
     Returns:
         pd.DataFrame: A DataFrame with 'Player', 'sleeper_id', and 'fantasypros_id' columns.
     """
@@ -22,6 +15,10 @@ def get_id_map() -> pd.DataFrame:
 
     # Import the player ID data and select the specified columns
     id_map_df = nfl.import_ids()[id_columns]
+
+    # Replace certain 3 letter team abbreviations with the more common 2 letter abbreviations (eg GBP -> GB)
+    abbreviations = {'GBP': 'GB', 'KCC' : 'KC', 'LVR': 'LV', 'NEP': 'NE', 'NOS': 'NO', 'SFO': 'SF', 'TBB': 'TB'}
+    id_map_df['team'] = id_map_df['team'].replace(abbreviations)
 
     # Create a 'Player' column by combining the player's name and team for a unique identifier
     # This helps differentiate between players with the same name but different teams.
@@ -42,8 +39,4 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.width', None)
 
-    # Example of how to use the function and display the output
-    player_id_map = get_id_map()
-    print("Generated Player ID Map:")
-    print(player_id_map.head())
-    print(f"\nTotal players mapped: {len(player_id_map)}")
+    print(get_id_map().head())
