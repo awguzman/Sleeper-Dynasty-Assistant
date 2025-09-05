@@ -14,7 +14,11 @@ def get_id_map() -> pd.DataFrame:
     id_columns = ['name', 'team', 'sleeper_id', 'fantasypros_id']
 
     # Import the player ID data and select the specified columns
-    id_map_df = nfl.import_ids()[id_columns]
+    id_map_df = nfl.import_ids()
+    if id_map_df.empty:
+        raise Exception('nfl_data_py ID import failed.')
+    id_map_df = id_map_df[id_columns]
+
 
     # Replace certain 3 letter team abbreviations with the more common 2 letter abbreviations (eg GBP -> GB)
     abbreviations = {'GBP': 'GB', 'KCC' : 'KC', 'LVR': 'LV', 'NEP': 'NE', 'NOS': 'NO', 'SFO': 'SF', 'TBB': 'TB'}

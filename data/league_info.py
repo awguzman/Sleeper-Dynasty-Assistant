@@ -7,10 +7,6 @@ def get_league_info(league_id: str) -> pd.DataFrame:
     """
     Retrieves and processes fantasy football league data from the Sleeper API.
 
-    This function fetches roster information for a given Sleeper league ID,
-    combines the main roster and reserve players into a single list of Sleeper IDs,
-    and then maps these IDs to lists of player names and FantasyPros IDs.
-
     Args:
         league_id: The unique identifier for the Sleeper league.
 
@@ -24,13 +20,15 @@ def get_league_info(league_id: str) -> pd.DataFrame:
 
     # Request league data from Sleeper and store in a DataFrame.
     sleeper_request = requests.get(sleeper_url).json()
+    if sleeper_request == {}:
+        raise Exception(f'League ID {league_id} does not return any league data from Sleeper.')
     league_df = pd.DataFrame.from_dict(sleeper_request, orient='columns')[league_columns]
 
     # Combine players and reserve into a single 'sleeper_ids' list for each owner
     league_df['sleeper_ids'] = league_df.apply(lambda row: (row['players'] or []) + (row['reserve'] or []), axis=1)
     league_df = league_df.drop(columns=['players', 'reserve'])
 
-    # Get the player ID map and create efficient lookup dictionaries
+    # Get the player ID map and create lookup dictionaries
     id_map_df = get_id_map()
     sleeper_to_fp_dict = pd.Series(id_map_df.fantasypros_id.values, index=id_map_df.sleeper_id).to_dict()
     sleeper_to_name_dict = pd.Series(id_map_df.Player.values, index=id_map_df.sleeper_id).to_dict()
@@ -67,6 +65,8 @@ def translate_owner_id(league_id: str) -> pd.DataFrame:
 
     # Request league owner data from Sleeper and store in a DataFrame.
     sleeper_request = requests.get(sleeper_url).json()
+    if sleeper_request == {}:
+        raise Exception(f'League ID {league_id} does not return any league data from Sleeper.')
     owner_df = pd.DataFrame.from_dict(sleeper_request, orient='columns')[['user_id', 'display_name']]
     owner_df = owner_df.rename(columns={'user_id': 'owner_id', 'display_name': 'owner_name'})
 
