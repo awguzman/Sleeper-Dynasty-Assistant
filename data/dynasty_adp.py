@@ -33,7 +33,7 @@ def get_adp(pos: str) -> pd.DataFrame:
     adp_df = pd.DataFrame(players_list)
 
     adp_df['Player (Team)'] = adp_df['player_name'] + ' ' + adp_df['player_team_id']
-    adp_columns = ['player_id', 'Player (Team)', 'player_age', 'pos_rank', 'rank_min', 'rank_max', 'rank_ave', 'rank_std']
+    adp_columns = ['player_id', 'Player', 'player_age', 'pos_rank', 'rank_min', 'rank_max', 'rank_ave', 'rank_std']
     adp_df = adp_df[adp_columns]
     adp_df = adp_df.rename({'player_id': 'fantasypros_id',
                             'player_age': 'Age',
