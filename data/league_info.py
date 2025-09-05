@@ -24,6 +24,7 @@ def get_league_info(league_id: str) -> pd.DataFrame:
         raise Exception(f'League ID {league_id} does not return any league data from Sleeper.')
     league_df = pd.DataFrame.from_dict(sleeper_request, orient='columns')[league_columns]
 
+
     # Combine players and reserve into a single 'sleeper_ids' list for each owner
     league_df['sleeper_ids'] = league_df.apply(lambda row: (row['players'] or []) + (row['reserve'] or []), axis=1)
     league_df = league_df.drop(columns=['players', 'reserve'])

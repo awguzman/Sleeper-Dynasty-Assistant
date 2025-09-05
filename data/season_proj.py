@@ -3,7 +3,17 @@ import requests
 
 
 def compute_projected_points(pos: str, league_id: str) -> pd.DataFrame:
-    """ Scrape Fantasypros.com projected stats for fantasy point calculations. """
+    """
+    Retrieve Fantasypros projected season stats for a given position and use these to calculate projected fantasy
+        points for the given league scoring settings.
+
+    Args:
+        pos: Position to retrieve projected stats for. Can only be qb, rb, wr, or te.
+        league_id: The unique identifier for the Sleeper league.
+
+    Returns:
+        proj_df: A pandas DataFrame containing one row per player, with columns giving Player and Proj. Points.
+    """
 
     if pos not in ['qb', 'rb', 'wr', 'te']:
         raise Exception(f'Failed to retrieve Fantasypros projected season stats. '
@@ -71,9 +81,19 @@ def compute_projected_points(pos: str, league_id: str) -> pd.DataFrame:
     return proj_df
 
 def get_scoring_weights(league_id: str) -> dict:
+    """
+    Gets the scoring settings for the Sleeper league ID.
+
+    Args:
+        league_id: The unique identifier for the Sleeper league.
+
+    Returns:
+        scoring_weights: The scoring settings for the given league.
+    """
 
     sleeper_url = f'https://api.sleeper.app/v1/league/{league_id}'
 
+    # Request league information from Sleeper and select the scoring settings value.
     sleeper_request = requests.get(sleeper_url).json()
     scoring_weights = sleeper_request['scoring_settings']
 
