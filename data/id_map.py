@@ -26,7 +26,7 @@ def get_id_map() -> pd.DataFrame:
 
     # Create a 'Player' column by combining the player's name and team for a unique identifier
     # This helps differentiate between players with the same name but different teams.
-    id_map_df.insert(loc=0, column='Player', value=id_map_df['name'] + ' ' + id_map_df['team'])
+    id_map_df.insert(loc=0, column='Player (Team)', value=id_map_df['name'] + ' ' + id_map_df['team'])
 
     # Drop the original 'name' and 'team' columns as they are now redundant
     id_map_df = id_map_df.drop(columns=['name', 'team'], axis=1)
