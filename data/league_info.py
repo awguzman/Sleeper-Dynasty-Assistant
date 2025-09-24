@@ -55,7 +55,6 @@ def get_league_info(league_id: str) -> pd.DataFrame:
 
     # Apply the mapping and create two new columns for the results
     mapped_data = league_df['sleeper_ids'].apply(map_ids)
-    print(mapped_data)
     league_df[['fantasypros_ids', 'player_names']] = pd.DataFrame(
         mapped_data.tolist(), index=league_df.index
     )
