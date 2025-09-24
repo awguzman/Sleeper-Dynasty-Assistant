@@ -2,13 +2,26 @@ import pandas as pd
 
 from data.season_proj import compute_projected_points
 from data.dynasty_adp import get_adp
+from data.league_info import get_league_info
 
-def create_draft_board(pos:str, league_id: str) -> pd.DataFrame:
+def create_draft_board(pos:str, league_id: str, owner_id: str) -> pd.DataFrame:
 
     adp_df = get_adp(pos)
     proj_df = compute_projected_points(pos, league_id)
 
     board_df = adp_df.merge(proj_df, how='left', on='Player')
+
+    # Get the rosters of all other owners
+    league_df = get_league_info(league_id)
+    other_owners_df = league_df[league_df['owner_id'] != owner_id]
+
+    # Create a single set of all players taken by other owners
+    taken_players = set()
+    for roster in other_owners_df['player_names']:
+        taken_players.update(roster)
+
+    # Filter the projected players to exclude those taken by others
+    board_df = board_df[~board_df['Player'].isin(taken_players)]
 
     return board_df
 
@@ -19,5 +32,6 @@ if __name__ == '__main__':
     pd.set_option('display.width', None)
 
     league_id = input('Enter Sleeper platform league number (This is found in the sleeper url):')
-    board_df = create_draft_board('rb', league_id)
+    owner_id = input('Enter your Sleeper owner ID:')
+    board_df = create_draft_board('rb', league_id, owner_id)
     print(board_df)
