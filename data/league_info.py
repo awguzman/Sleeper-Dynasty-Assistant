@@ -31,18 +31,34 @@ def get_league_info(league_id: str) -> pd.DataFrame:
 
     # Get the player ID map and create lookup dictionaries
     id_map_df = get_id_map()
-    sleeper_to_fp_dict = pd.Series(id_map_df.fantasypros_id.values, index=id_map_df.sleeper_id).to_dict()
-    sleeper_to_name_dict = pd.Series(id_map_df.Player.values, index=id_map_df.sleeper_id).to_dict()
+    id_map_df['sleeper_id'] = id_map_df['sleeper_id'].astype(str)
+    id_map_df['fantasypros_id'] = id_map_df['fantasypros_id'].astype(str)
+    sleeper_to_fpro = pd.Series(id_map_df.fantasypros_id.values, index=id_map_df.sleeper_id).to_dict()
+    sleeper_to_name = pd.Series(id_map_df.Player.values, index=id_map_df.sleeper_id).to_dict()
 
     # Helper function to use the dictionaries to map the sleeper_ids to the desired values
     def map_ids(sleeper_id_list):
-        fantasypros_ids = [int(sleeper_to_fp_dict.get(int(sid))) for sid in sleeper_id_list]
-        roster = [sleeper_to_name_dict.get(int(sid)) for sid in sleeper_id_list]
-        return fantasypros_ids, roster
+        """Safely maps sleeper IDs to fantasypros IDs and names, skipping missing players."""
+        fantasypros_ids = []
+        player_names = []
+        for sid in sleeper_id_list:
+            # Look up the fantasypros_id and player_name
+            fp_id = sleeper_to_fpro.get(sid)
+            name = sleeper_to_name.get(sid)
+
+            # Only add the player if they were found in the mapping
+            if fp_id is not None and name is not None:
+                fantasypros_ids.append(fp_id)
+                player_names.append(name)
+
+        return fantasypros_ids, player_names
 
     # Apply the mapping and create two new columns for the results
     mapped_data = league_df['sleeper_ids'].apply(map_ids)
-    league_df[['fantasypros_ids', 'roster']] = pd.DataFrame(mapped_data.tolist(), index=league_df.index)
+    print(mapped_data)
+    league_df[['fantasypros_ids', 'player_names']] = pd.DataFrame(
+        mapped_data.tolist(), index=league_df.index
+    )
 
     # Add owner name column.
     league_df = translate_owner_id(league_id).merge(league_df, how='left', on='owner_id').dropna()

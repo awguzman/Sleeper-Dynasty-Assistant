@@ -34,6 +34,9 @@ def get_id_map() -> pd.DataFrame:
     # Remove any players who are missing a Sleeper or FantasyPros ID, as they cannot be mapped
     id_map_df = id_map_df.dropna(subset=['sleeper_id', 'fantasypros_id']).reset_index(drop=True)
 
+    id_map_df['sleeper_id'] = id_map_df['sleeper_id'].astype(int).astype(str)
+    id_map_df['fantasypros_id'] = id_map_df['fantasypros_id'].astype(int).astype(str)
+
     return id_map_df
 
 
