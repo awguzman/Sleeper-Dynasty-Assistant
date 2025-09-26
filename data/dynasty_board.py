@@ -16,12 +16,12 @@ def create_draft_board(pos:str, league_id: str, owner_id: str) -> pd.DataFrame:
     other_owners_df = league_df[league_df['owner_id'] != owner_id]
 
     # Create a single set of all players taken by other owners
-    taken_players = set()
-    for roster in other_owners_df['player_names']:
-        taken_players.update(roster)
+    taken_fp_ids = set()
+    for fp_id in other_owners_df['fantasypros_ids']:
+        taken_fp_ids.update(fp_id)
 
     # Filter the projected players to exclude those taken by others
-    board_df = board_df[~board_df['Player'].isin(taken_players)]
+    board_df = board_df[~board_df['fantasypros_id'].isin(taken_fp_ids)]
 
     return board_df
 
