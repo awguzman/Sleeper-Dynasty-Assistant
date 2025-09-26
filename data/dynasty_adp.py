@@ -32,6 +32,7 @@ def get_adp(pos: str) -> pd.DataFrame:
     players_list = (adp_data.get('players', []))
     adp_df = pd.DataFrame(players_list)
 
+    # Reformat columns
     adp_df['Player'] = adp_df['player_name'] + ' ' + adp_df['player_team_id']
     adp_columns = ['player_id', 'Player', 'player_age', 'pos_rank', 'rank_ave', 'rank_min', 'rank_max', 'rank_std']
     adp_df = adp_df[adp_columns]
@@ -42,6 +43,9 @@ def get_adp(pos: str) -> pd.DataFrame:
                             'rank_max': 'ECR Max',
                             'rank_ave': 'ADP',
                             'rank_std': 'ECR Std'}, axis=1)
+
+    # Convert type of ID's to conform later.
+    adp_df['fantasypros_id'] = adp_df['fantasypros_id'].astype(int).astype(str)
 
     return adp_df
 
