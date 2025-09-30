@@ -10,56 +10,83 @@ app = dash.Dash(__name__)
 
 # --- App Layout ---
 app.layout = html.Div([
-    html.H1("Dynasty Assistant Dashboard"),
+    html.H1("Sleeper Dynasty Assistant"),
 
+    # Parent container for the top-row inputs
     html.Div([
-        html.Label("Enter Sleeper League ID:"),
-        dcc.Input(
-            id='league-id-input',
-            type='text',
-            placeholder='e.g., 992016434344030208'
-        ),
-    ]),
+        # League ID Input Group
+        html.Div([
+            html.Label("Enter Sleeper League ID: ", style={'margin-right': '10px'}),
+            dcc.Input(
+                id='league-id-input',
+                type='text',
+                placeholder='e.g., 992016434344030208'
+            ),
+        ], style={'display': 'flex', 'align-items': 'center', 'margin-right': '50px'}),
+        
+        # Owner ID Dropdown Group
+        html.Div([
+            html.Label("Select Owner: ", style={'margin-right': '10px'}),
+            dcc.Dropdown(
+                id='owner-id-dropdown',
+                placeholder='Your username',
+                style={'width': '250px'}
+            ),
+        ], style={'display': 'flex', 'align-items': 'center'}),
+    ], style={'display': 'flex', 'align-items': 'center'}),
 
     html.Br(),
 
-    html.Div([
-        html.Label("Select Owner ID:"),
-        dcc.Dropdown(
-            id='owner-id-dropdown',
-            placeholder='Select your ID'
-        ),
+    # Tabs for different views
+    dcc.Tabs([
+        # Draft Board Tab
+        dcc.Tab(label='Draft Board', children=[
+            html.Br(),
+            html.Div([
+                # Group for left-aligned items
+                html.Div([
+                    html.Label("Position: ", style={'margin-right': '20px'}),
+                    dcc.RadioItems(
+                        id='position-selection',
+                        options=[
+                            {'label': 'Quarterback', 'value': 'qb'},
+                            {'label': 'Running Back', 'value': 'rb'},
+                            {'label': 'Wide Receiver', 'value': 'wr'},
+                            {'label': 'Tight End', 'value': 'te'},
+                        ],
+                        value='qb',  # Default value
+                        inline=True,  # Display options horizontally
+                        labelStyle={'margin-right': '20px'}  # Add space between radio items
+                    ),
+                ], style={'display': 'flex', 'align-items': 'center'}),
+
+                # This item will be pushed to the right
+                dcc.Checklist(
+                    id='show-taken-checkbox',
+                    options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
+                    value=[],  # Default to unchecked
+                ),
+            ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
+
+            html.Br(),
+
+            dash_table.DataTable(
+                id='player-table',
+                style_header={'backgroundColor': 'rgb(30, 30, 30)', 'color': 'white'},
+                style_cell={'backgroundColor': 'rgb(50, 50, 50)', 'color': 'white'},
+            )
+        ]),
+
+        # Weekly Projections Tab
+        dcc.Tab(label='Projections', children=[
+
+        ]),
+
+        # Trade Calculator Tab
+        dcc.Tab(label='Trade Calculator', children=[
+
+        ]),
     ]),
-
-    html.Br(),
-
-    html.Div([
-        html.Label("Select Position:"),
-        dcc.Dropdown(
-            id='position-dropdown',
-            options=[
-                {'label': 'Quarterback', 'value': 'qb'},
-                {'label': 'Running Back', 'value': 'rb'},
-                {'label': 'Wide Receiver', 'value': 'wr'},
-                {'label': 'Tight End', 'value': 'te'},
-            ],
-            placeholder='Select a position'
-        ),
-    ]),
-
-    html.Br(),
-
-    dash_table.DataTable(
-        id='player-table',
-        style_header={
-            'backgroundColor': 'rgb(30, 30, 30)',
-            'color': 'white'
-        },
-        style_cell={
-            'backgroundColor': 'rgb(50, 50, 50)',
-            'color': 'white'
-        },
-    )
 ])
 
 
@@ -96,11 +123,12 @@ def update_owner_dropdown(league_id):
     [
         Input('league-id-input', 'value'),
         Input('owner-id-dropdown', 'value'),
-        Input('position-dropdown', 'value')
+        Input('position-selection', 'value'),
+        Input('show-taken-checkbox', 'value')
     ]
 )
 
-def update_player_table(league_id, owner_id, position):
+def update_player_table(league_id, owner_id, position, show_taken_value):
     """
     Updates the player table based on league, owner, and position selections.
     It filters out players who are already on other owners' rosters.
@@ -108,8 +136,11 @@ def update_player_table(league_id, owner_id, position):
     if not all([league_id, owner_id, position]):
         return [], []
 
+    # The checklist's value is a list. It's not empty if the box is checked.
+    show_taken_flag = bool(show_taken_value)
+
     # Fetch the projection data
-    board_df = create_draft_board(position, league_id, owner_id)
+    board_df = create_draft_board(position, league_id, owner_id, show_taken=show_taken_flag)
 
     # Format the DataFrame for the Dash DataTable
     columns = [{"name": i, "id": i} for i in board_df.columns]
