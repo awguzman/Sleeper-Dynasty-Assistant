@@ -4,24 +4,27 @@ from data.season_proj import compute_projected_points
 from data.dynasty_adp import get_adp
 from data.league_info import get_league_info
 
-def create_draft_board(pos:str, league_id: str, owner_id: str) -> pd.DataFrame:
+def create_draft_board(pos:str, league_id: str, owner_id: str, show_taken = False) -> pd.DataFrame:
 
     adp_df = get_adp(pos)
     proj_df = compute_projected_points(pos, league_id)
 
     board_df = adp_df.merge(proj_df, how='left', on='Player')
 
-    # Get the rosters of all other owners
-    league_df = get_league_info(league_id)
-    other_owners_df = league_df[league_df['owner_id'] != owner_id]
+    if not show_taken:
+        # Get the rosters of all other owners
+        league_df = get_league_info(league_id)
+        other_owners_df = league_df[league_df['owner_id'] != owner_id]
 
-    # Create a single set of all players taken by other owners
-    taken_fp_ids = set()
-    for fp_id in other_owners_df['fantasypros_ids']:
-        taken_fp_ids.update(fp_id)
+        # Create a single set of all players taken by other owners
+        taken_fp_ids = set()
+        for fp_id in other_owners_df['fantasypros_ids']:
+            taken_fp_ids.update(fp_id)
 
-    # Filter the projected players to exclude those taken by others
-    board_df = board_df[~board_df['fantasypros_id'].isin(taken_fp_ids)]
+        # Filter the projected players to exclude those taken by others
+        board_df = board_df[~board_df['fantasypros_id'].isin(taken_fp_ids)]
+
+    board_df.drop('fantasypros_id', axis=1, inplace=True)
 
     return board_df
 
