@@ -1,5 +1,8 @@
 import pandas as pd
-import requests
+
+from data.league_info import get_scoring_weights
+
+
 
 
 def compute_projected_points(pos: str, league_id: str) -> pd.DataFrame:
@@ -79,25 +82,6 @@ def compute_projected_points(pos: str, league_id: str) -> pd.DataFrame:
     proj_df = proj_df[['Player', 'Proj. Points']]
 
     return proj_df
-
-def get_scoring_weights(league_id: str) -> dict:
-    """
-    Gets the scoring settings for the Sleeper league ID.
-
-    Args:
-        league_id: The unique identifier for the Sleeper league.
-
-    Returns:
-        scoring_weights: The scoring settings for the given league.
-    """
-
-    sleeper_url = f'https://api.sleeper.app/v1/league/{league_id}'
-
-    # Request league information from Sleeper and select the scoring settings value.
-    sleeper_request = requests.get(sleeper_url).json()
-    scoring_weights = sleeper_request['scoring_settings']
-
-    return scoring_weights
 
 if __name__ == '__main__':
     # For debugging: prevent pandas from truncating display
