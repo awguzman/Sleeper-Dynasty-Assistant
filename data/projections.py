@@ -3,9 +3,7 @@ import pandas as pd
 from data.league_info import get_scoring_weights
 
 
-
-
-def compute_projected_points(pos: str, league_id: str) -> pd.DataFrame:
+def compute_projected_points(pos: str, league_id: str, draft = False) -> pd.DataFrame:
     """
     Retrieve Fantasypros projected season stats for a given position and use these to calculate projected fantasy
         points for the given league scoring settings.
@@ -23,7 +21,10 @@ def compute_projected_points(pos: str, league_id: str) -> pd.DataFrame:
                         f'Invalid position: {pos}. Must be qb, rb, wr, or te. ')
 
     # Store fantasypros url for projected stats.
-    proj_url = f'https://www.fantasypros.com/nfl/projections/{pos}.php?week=draft'
+    if not draft:
+        proj_url = f'https://www.fantasypros.com/nfl/projections/{pos}.php?week=draft'
+    else:
+        proj_url = f'https://www.fantasypros.com/nfl/projections/{pos}.php'
 
     # Scrape Fantasy Pro's projected player stats and store in a DataFrame.
     proj_df = pd.read_html(proj_url, header=1)[0]
