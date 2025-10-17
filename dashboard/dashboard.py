@@ -3,6 +3,7 @@ from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output
 
 from data.dynasty_board import create_draft_board
+from data.weekly_rank import create_proj_board
 from data.league_info import get_league_info
 
 # Initialize the Dash application
@@ -47,7 +48,7 @@ app.layout = html.Div([
                 html.Div([
                     html.Label("Position: ", style={'margin-right': '20px'}),
                     dcc.RadioItems(
-                        id='position-selection',
+                        id='position-draft-selection',
                         options=[
                             {'label': 'Quarterback', 'value': 'qb'},
                             {'label': 'Running Back', 'value': 'rb'},
@@ -62,7 +63,7 @@ app.layout = html.Div([
 
                 # This item will be pushed to the right
                 dcc.Checklist(
-                    id='show-taken-checkbox',
+                    id='show-taken-draft-checkbox',
                     options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
                     value=[],  # Default to unchecked
                 ),
@@ -71,7 +72,7 @@ app.layout = html.Div([
             html.Br(),
 
             dash_table.DataTable(
-                id='player-table',
+                id='draft-table',
                 style_header={'backgroundColor': 'rgb(30, 30, 30)', 'color': 'white'},
                 style_cell={'backgroundColor': 'rgb(50, 50, 50)', 'color': 'white'},
             )
@@ -79,6 +80,40 @@ app.layout = html.Div([
 
         # Weekly Projections Tab
         dcc.Tab(label='Projections', children=[
+            html.Br(),
+            html.Div([
+                # Group for left-aligned items
+                html.Div([
+                    html.Label("Position: ", style={'margin-right': '20px'}),
+                    dcc.RadioItems(
+                        id='position-proj-selection',
+                        options=[
+                            {'label': 'Quarterback', 'value': 'qb'},
+                            {'label': 'Running Back', 'value': 'rb'},
+                            {'label': 'Wide Receiver', 'value': 'wr'},
+                            {'label': 'Tight End', 'value': 'te'},
+                        ],
+                        value='qb',  # Default value
+                        inline=True,  # Display options horizontally
+                        labelStyle={'margin-right': '20px'}  # Add space between radio items
+                    ),
+                ], style={'display': 'flex', 'align-items': 'center'}),
+
+                # This item will be pushed to the right
+                dcc.Checklist(
+                    id='show-taken-proj-checkbox',
+                    options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
+                    value=[],  # Default to unchecked
+                ),
+            ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
+
+            html.Br(),
+
+            dash_table.DataTable(
+                id='proj-table',
+                style_header={'backgroundColor': 'rgb(30, 30, 30)', 'color': 'white'},
+                style_cell={'backgroundColor': 'rgb(50, 50, 50)', 'color': 'white'},
+            )
 
         ]),
 
@@ -114,21 +149,21 @@ def update_owner_dropdown(league_id):
     return owner_options
 
 
-# --- Callback to Update Player Table ---
+# --- Callback to Update Draft Table ---
 @app.callback(
     [
-        Output('player-table', 'data'),
-        Output('player-table', 'columns')
+        Output('draft-table', 'data'),
+        Output('draft-table', 'columns')
     ],
     [
         Input('league-id-input', 'value'),
         Input('owner-id-dropdown', 'value'),
-        Input('position-selection', 'value'),
-        Input('show-taken-checkbox', 'value')
+        Input('position-draft-selection', 'value'),
+        Input('show-taken-draft-checkbox', 'value')
     ]
 )
 
-def update_player_table(league_id, owner_id, position, show_taken_value):
+def update_draft_table(league_id, owner_id, position, show_taken_value):
     """
     Updates the player table based on league, owner, and position selections.
     It filters out players who are already on other owners' rosters.
@@ -141,6 +176,40 @@ def update_player_table(league_id, owner_id, position, show_taken_value):
 
     # Fetch the projection data
     board_df = create_draft_board(position, league_id, owner_id, show_taken=show_taken_flag)
+
+    # Format the DataFrame for the Dash DataTable
+    columns = [{"name": i, "id": i} for i in board_df.columns]
+    data = board_df.to_dict('records')
+
+    return data, columns
+
+# --- Callback to Update Projections Table ---
+@app.callback(
+    [
+        Output('proj-table', 'data'),
+        Output('proj-table', 'columns')
+    ],
+    [
+        Input('league-id-input', 'value'),
+        Input('owner-id-dropdown', 'value'),
+        Input('position-proj-selection', 'value'),
+        Input('show-taken-proj-checkbox', 'value')
+    ]
+)
+
+def update_proj_table(league_id, owner_id, position, show_taken_value):
+    """
+    Updates the player table based on league, owner, and position selections.
+    It filters out players who are already on other owners' rosters.
+    """
+    if not all([league_id, owner_id, position]):
+        return [], []
+
+    # The checklist's value is a list. It's not empty if the box is checked.
+    show_taken_flag = bool(show_taken_value)
+
+    # Fetch the projection data
+    board_df = create_proj_board(position, league_id, owner_id, show_taken=show_taken_flag)
 
     # Format the DataFrame for the Dash DataTable
     columns = [{"name": i, "id": i} for i in board_df.columns]

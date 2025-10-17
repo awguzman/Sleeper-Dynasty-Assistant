@@ -11,6 +11,7 @@ def compute_projected_points(pos: str, league_id: str, draft = False) -> pd.Data
     Args:
         pos: Position to retrieve projected stats for. Can only be qb, rb, wr, or te.
         league_id: The unique identifier for the Sleeper league.
+        draft: Boolean flag to switch between full season projections or weekly projections.
 
     Returns:
         proj_df: A pandas DataFrame containing one row per player, with columns giving Player and Proj. Points.
@@ -21,7 +22,7 @@ def compute_projected_points(pos: str, league_id: str, draft = False) -> pd.Data
                         f'Invalid position: {pos}. Must be qb, rb, wr, or te. ')
 
     # Store fantasypros url for projected stats.
-    if not draft:
+    if draft:
         proj_url = f'https://www.fantasypros.com/nfl/projections/{pos}.php?week=draft'
     else:
         proj_url = f'https://www.fantasypros.com/nfl/projections/{pos}.php'
@@ -91,9 +92,6 @@ if __name__ == '__main__':
     pd.set_option('display.width', None)
 
     league_id = input('Enter Sleeper platform league number (This is found in the sleeper url):')
-    qb_df = compute_projected_points('qb', league_id)
-    rb_df = compute_projected_points('rb', league_id)
-    wr_df = compute_projected_points('wr', league_id)
-    te_df = compute_projected_points('te', league_id)
+    rb_df = compute_projected_points('rb', league_id, draft=False)
 
     print(rb_df)
