@@ -1,43 +1,55 @@
+"""
+This module handles the scraping and calculation of player fantasy point projections.
+
+It fetches raw statistical projections from FantasyPros for either a full season (draft)
+or a single week, then applies a given league's scoring settings to calculate
+a final projected fantasy point total for each player.
+"""
 import pandas as pd
 
 from data.league_info import get_scoring_weights
 
 
-def compute_projected_points(pos: str, league_id: str, draft = False) -> pd.DataFrame:
+def compute_projected_points(pos: str, league_id: str, draft: bool = False) -> pd.DataFrame:
     """
-    Retrieve Fantasypros projected season stats for a given position and use these to calculate projected fantasy
-        points for the given league scoring settings.
+    Scrapes FantasyPros for player projections and calculates fantasy points.
 
     Args:
-        pos: Position to retrieve projected stats for. Can only be qb, rb, wr, or te.
-        league_id: The unique identifier for the Sleeper league.
-        draft: Boolean flag to switch between full season projections or weekly projections.
+        pos (str): The position to retrieve stats for (e.g., 'qb', 'rb', 'wr', 'te').
+        league_id (str): The unique identifier for the Sleeper league, used for scoring rules.
+        draft (bool, optional): If True, fetches full-season "draft" projections.
+                                If False, fetches current week projections. Defaults to False.
 
     Returns:
-        proj_df: A pandas DataFrame containing one row per player, with columns giving Player and Proj. Points.
+        pd.DataFrame: A DataFrame with columns for 'Player' and 'Proj. Points'.
     """
 
     if pos not in ['qb', 'rb', 'wr', 'te']:
         raise Exception(f'Failed to retrieve Fantasypros projected season stats. '
                         f'Invalid position: {pos}. Must be qb, rb, wr, or te. ')
 
-    # Store fantasypros url for projected stats.
+    # Construct the correct FantasyPros URL based on whether we need season or weekly projections.
     if draft:
         proj_url = f'https://www.fantasypros.com/nfl/projections/{pos}.php?week=draft'
     else:
         proj_url = f'https://www.fantasypros.com/nfl/projections/{pos}.php'
 
-    # Scrape Fantasy Pro's projected player stats and store in a DataFrame.
+    # Use pandas' read_html to directly scrape the main data table from the URL.
     proj_df = pd.read_html(proj_url, header=1)[0]
 
-    # Pick out columns that are important for fantasy point calculation.
+    # Define the relevant stat columns for each position.
+    # Note: FantasyPros uses ambiguous column names (e.g., YDS, YDS.1) that change meaning by position.
     if pos == 'qb':
+        # For QBs: YDS is Passing Yards, YDS.1 is Rushing Yards.
         stats_columns = ['Player', 'YDS', 'TDS', 'INTS', 'YDS.1', 'TDS.1', 'FL']
     elif pos == 'rb':
+        # For RBs: YDS is Rushing Yards, YDS.1 is Receiving Yards.
         stats_columns = ['Player', 'YDS', 'TDS', 'REC', 'YDS.1', 'TDS.1', 'FL']
     elif pos == 'wr':
+        # For WRs: YDS is Receiving Yards, YDS.1 is Rushing Yards.
         stats_columns = ['Player', 'REC', 'YDS', 'TDS', 'YDS.1', 'TDS.1', 'FL']
     else:
+        # For TEs: YDS is Receiving Yards.
         stats_columns = ['Player', 'REC', 'YDS', 'TDS', 'FL']
 
     # Filter columns according to the columns picked out above.
@@ -46,6 +58,7 @@ def compute_projected_points(pos: str, league_id: str, draft = False) -> pd.Data
     # Compute projected fantasy points and add a column in the positional DataFrames.
     scoring_weights = get_scoring_weights(league_id)
 
+    # Calculate 'Proj. Points' by applying the league's scoring weights to the scraped stats.
     if pos == 'qb':
         proj_df['Proj. Points'] = (
                 proj_df['YDS'] * scoring_weights['pass_yd'] +
@@ -80,7 +93,7 @@ def compute_projected_points(pos: str, league_id: str, draft = False) -> pd.Data
                 proj_df['TDS'] * scoring_weights['rec_td'] +
                 proj_df['FL'] * scoring_weights['fum_lost']).round(2)
 
-    # Filter out raw projected stats.
+    # Return only the player's name and their calculated projected points.
     proj_df = proj_df[['Player', 'Proj. Points']]
 
     return proj_df

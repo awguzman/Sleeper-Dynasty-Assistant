@@ -1,13 +1,26 @@
+"""
+This module serves as the master player ID mapping utility for the application.
+
+Its primary function is to generate a clean, unified DataFrame that connects a player's
+name and team to their unique identifiers on different platforms (Sleeper, FantasyPros).
+This mapping is essential for merging disparate data sources, such as Sleeper rosters
+and FantasyPros rankings/projections.
+"""
 import nfl_data_py as nfl
 import pandas as pd
 
 
 def get_id_map() -> pd.DataFrame:
     """
-    Generates a DataFrame mapping player names and teams to their Sleeper and FantasyPros IDs.
+    Fetches and cleans a dataset to map player names to their platform-specific IDs.
+
+    This function uses the nfl_data_py library as its source. It performs several
+    cleaning steps: normalizing team abbreviations, creating a composite 'Player' key,
+    and removing entries that lack the necessary IDs for mapping.
 
     Returns:
-        pd.DataFrame: A DataFrame with 'Player', 'sleeper_id', and 'fantasypros_id' columns.
+        pd.DataFrame: A clean DataFrame with 'Player', 'sleeper_id', and
+                      'fantasypros_id' columns, ready for merging.
     """
 
     # Define the columns we want to keep from the imported data
@@ -20,7 +33,8 @@ def get_id_map() -> pd.DataFrame:
     id_map_df = id_map_df[id_columns]
 
 
-    # Replace certain 3 letter team abbreviations with the more common 2 letter abbreviations (eg GBP -> GB)
+    # Normalize team abbreviations to match the format used by other data sources (e.g., FantasyPros).
+    # nfl_data_py sometimes uses 3-letter codes (GBP) while others use 2 (GB).
     abbreviations = {'GBP': 'GB', 'KCC' : 'KC', 'LVR': 'LV', 'NEP': 'NE', 'NOS': 'NO', 'SFO': 'SF', 'TBB': 'TB'}
     id_map_df['team'] = id_map_df['team'].replace(abbreviations)
 
@@ -34,6 +48,8 @@ def get_id_map() -> pd.DataFrame:
     # Remove any players who are missing a Sleeper or FantasyPros ID, as they cannot be mapped
     id_map_df = id_map_df.dropna(subset=['sleeper_id', 'fantasypros_id']).reset_index(drop=True)
 
+    # Convert ID columns to a string type to ensure consistent and reliable merging.
+    # The .astype(int) step handles cases where IDs might be read as floats (e.g., '4046.0').
     id_map_df['sleeper_id'] = id_map_df['sleeper_id'].astype(int).astype(str)
     id_map_df['fantasypros_id'] = id_map_df['fantasypros_id'].astype(int).astype(str)
 
