@@ -1,19 +1,32 @@
+"""
+This script defines the layout and callback logic for the Sleeper Dynasty Assistant dashboard.
+"""
+
 import dash
 from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output
 
-from data.dynasty_board import create_draft_board
-from data.weekly_rank import create_proj_board
-from data.league_info import get_league_info
+from src.boards import create_board, remove_taken
+from src.league_info import get_league_info
 
-# Initialize the Dash application
+from pathlib import Path
+from nflreadpy.config import update_config
+
+# --- Configure Cache ---
+cache_dir = Path(__file__).resolve().parent.parent / 'cache'
+update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True)
+
+# Initialize the Dash application. The __name__ is for Dash to locate static assets.
 app = dash.Dash(__name__)
 
 # --- App Layout ---
+# The layout is the root component that describes the application's appearance.
 app.layout = html.Div([
     html.H1("Sleeper Dynasty Assistant"),
 
-    # Parent container for the top-row inputs
+    # --- Global Controls ---
+    # These inputs for league and owner are placed outside the tabs so they
+    # can be used as persistent filters across all views.
     html.Div([
         # League ID Input Group
         html.Div([
@@ -38,9 +51,9 @@ app.layout = html.Div([
 
     html.Br(),
 
-    # Tabs for different views
+    # --- Main Tabbed Interface ---
     dcc.Tabs([
-        # Draft Board Tab
+        # --- Dynasty Draft Board Tab ---
         dcc.Tab(label='Draft Board', children=[
             html.Br(),
             html.Div([
@@ -50,12 +63,12 @@ app.layout = html.Div([
                     dcc.RadioItems(
                         id='position-draft-selection',
                         options=[
-                            {'label': 'Quarterback', 'value': 'qb'},
-                            {'label': 'Running Back', 'value': 'rb'},
-                            {'label': 'Wide Receiver', 'value': 'wr'},
-                            {'label': 'Tight End', 'value': 'te'},
+                            {'label': 'Quarterback', 'value': 'QB'},
+                            {'label': 'Running Back', 'value': 'RB'},
+                            {'label': 'Wide Receiver', 'value': 'WR'},
+                            {'label': 'Tight End', 'value': 'TE'},
                         ],
-                        value='qb',  # Default value
+                        value='QB',  # Default value
                         inline=True,  # Display options horizontally
                         labelStyle={'margin-right': '20px'}  # Add space between radio items
                     ),
@@ -78,7 +91,7 @@ app.layout = html.Div([
             )
         ]),
 
-        # Weekly Projections Tab
+        # --- Weekly Projections Tab ---
         dcc.Tab(label='Projections', children=[
             html.Br(),
             html.Div([
@@ -88,12 +101,12 @@ app.layout = html.Div([
                     dcc.RadioItems(
                         id='position-proj-selection',
                         options=[
-                            {'label': 'Quarterback', 'value': 'qb'},
-                            {'label': 'Running Back', 'value': 'rb'},
-                            {'label': 'Wide Receiver', 'value': 'wr'},
-                            {'label': 'Tight End', 'value': 'te'},
+                            {'label': 'Quarterback', 'value': 'QB'},
+                            {'label': 'Running Back', 'value': 'RB'},
+                            {'label': 'Wide Receiver', 'value': 'WR'},
+                            {'label': 'Tight End', 'value': 'TE'},
                         ],
-                        value='qb',  # Default value
+                        value='QB',  # Default value
                         inline=True,  # Display options horizontally
                         labelStyle={'margin-right': '20px'}  # Add space between radio items
                     ),
@@ -117,10 +130,10 @@ app.layout = html.Div([
 
         ]),
 
-        # Trade Calculator Tab
-        dcc.Tab(label='Trade Calculator', children=[
+        # --- Trade Calculator Tab (Placeholder) ---
+        #
 
-        ]),
+        #]),
     ]),
 ])
 
@@ -134,18 +147,22 @@ app.layout = html.Div([
 def update_owner_dropdown(league_id):
     """
     Populates the owner ID dropdown based on the entered league ID.
-    """
 
-    # Do nothing if league_id is blank
+    This callback is triggered whenever the 'league-id-input' value changes.
+    It fetches the league's user data and formats it for the dropdown.
+    """
+    # Prevent callback from firing with an empty league ID.
     if not league_id:
         return []
 
     league_df = get_league_info(league_id)
-    # Create a list of dictionaries for the dropdown options
-    owner_options = [
-        {'label': row['owner_name'], 'value': row['owner_id']}
-        for index, row in league_df.iterrows()
-    ]
+    # Format the owner data into a list of dictionaries as required by dcc.Dropdown
+    owner_options = (
+        league_df.select(['owner_name', 'owner_id'])
+        .rename({'owner_name': 'label', 'owner_id': 'value'})
+        .to_dicts()
+    )
+    
     return owner_options
 
 
@@ -165,21 +182,28 @@ def update_owner_dropdown(league_id):
 
 def update_draft_table(league_id, owner_id, position, show_taken_value):
     """
-    Updates the player table based on league, owner, and position selections.
-    It filters out players who are already on other owners' rosters.
+    Updates the dynasty draft board table based on user selections.
+
+    This callback listens for changes in the global filters or the tab-specific
+    filters and regenerates the draft board data accordingly.
     """
+    # Ensure all necessary inputs are provided before attempting to fetch data.
     if not all([league_id, owner_id, position]):
         return [], []
 
     # The checklist's value is a list. It's not empty if the box is checked.
     show_taken_flag = bool(show_taken_value)
 
-    # Fetch the projection data
-    board_df = create_draft_board(position, league_id, owner_id, show_taken=show_taken_flag)
+    # Call the data-layer function to get the dynasty draft board DataFrame.
+    board_df = create_board(position, draft=True)
+    
+    # If the 'Show Taken Players' box is NOT checked, remove them.
+    if not show_taken_flag:
+        board_df = remove_taken(league_id, owner_id, board_df)
 
     # Format the DataFrame for the Dash DataTable
     columns = [{"name": i, "id": i} for i in board_df.columns]
-    data = board_df.to_dict('records')
+    data = board_df.to_dicts()
 
     return data, columns
 
@@ -199,25 +223,34 @@ def update_draft_table(league_id, owner_id, position, show_taken_value):
 
 def update_proj_table(league_id, owner_id, position, show_taken_value):
     """
-    Updates the player table based on league, owner, and position selections.
-    It filters out players who are already on other owners' rosters.
+    Updates the weekly projections table based on user selections.
+
+    This callback listens for changes in the global filters or the tab-specific
+    filters and regenerates the weekly projection data accordingly.
     """
+    # Ensure all necessary inputs are provided before attempting to fetch data.
     if not all([league_id, owner_id, position]):
         return [], []
 
     # The checklist's value is a list. It's not empty if the box is checked.
     show_taken_flag = bool(show_taken_value)
 
-    # Fetch the projection data
-    board_df = create_proj_board(position, league_id, owner_id, show_taken=show_taken_flag)
+    # Call the data-layer function to get the weekly projection board DataFrame.
+    board_df = create_board(position, draft=False)
+
+    # If the 'Show Taken Players' box is NOT checked, remove them.
+    if not show_taken_flag:
+        board_df = remove_taken(league_id, owner_id, board_df)
 
     # Format the DataFrame for the Dash DataTable
     columns = [{"name": i, "id": i} for i in board_df.columns]
-    data = board_df.to_dict('records')
+    data = board_df.to_dicts()
 
     return data, columns
 
 
 # --- Run the Application ---
+# This block allows the script to be run directly to start the development server.
+# `debug=True` enables features like hot-reloading and the in-browser error console.
 if __name__ == '__main__':
     app.run(debug=True)
