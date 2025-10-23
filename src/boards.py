@@ -10,18 +10,17 @@ import polars as pl
 
 from src.league_info import get_league_info
 from nflreadpy import load_ff_rankings, load_ff_playerids
-from src.tiers import create_tiers
 
-def create_board(pos: str, draft: bool = False) -> pl.DataFrame:
+
+def create_board(draft: bool = False) -> pl.DataFrame:
     """
-    Creates a player ranking board for a specific position.
+    Creates a full player ranking board for all positions.
 
     This function can generate two types of boards:
     1. A dynasty/draft board with full-season ECR, player ages, etc.
     2. A weekly board with in-season weekly ECR and projections.
 
     Args:
-        pos (str): The position to create the board for (e.g., 'QB', 'RB').
         draft (bool, optional): If True, creates a dynasty/draft board.
                                 If False, creates a weekly board. Defaults to False.
 
@@ -37,11 +36,10 @@ def create_board(pos: str, draft: bool = False) -> pl.DataFrame:
         board_columns = ['id', 'player', 'team', 'bye', 'ecr_type', 'pos',
                          'ecr', 'best', 'worst', 'sd', 'scrape_date']
         ecr_type = 'dp'  # 'dp' specifies dynasty positional rankings
-        board_df = board_df[board_columns]
+        board_df = board_df[board_columns].filter(pl.col('pos').is_in(['QB', 'RB', 'WR', 'TE']))
 
-        # Filter for the specified position and for dynasty rankings
-        board_df = board_df.filter((pl.col('pos') == pos) &
-                                   (pl.col('ecr_type') == ecr_type)).drop('pos', 'ecr_type')
+        # Filter for dynasty rankings, but keep all positions.
+        board_df = board_df.filter(pl.col('ecr_type') == ecr_type).drop('ecr_type')
 
         # Rename columns for a user-friendly final DataFrame.
         board_df = board_df.rename({
@@ -55,7 +53,7 @@ def create_board(pos: str, draft: bool = False) -> pl.DataFrame:
             'sd': 'Std'
         })
 
-        # Add player ages, which is critical for dynasty.
+        # Add player ages.
         board_df = add_ages(board_df)
 
     else:
@@ -66,10 +64,7 @@ def create_board(pos: str, draft: bool = False) -> pl.DataFrame:
 
         board_columns = ['fantasypros_id', 'player_name', 'team', 'pos', 'pos_rank', 'player_opponent',
                          'start_sit_grade', 'ecr', 'best', 'worst', 'sd', 'r2p_pts', 'scrape_date']
-        board_df = board_df[board_columns]
-
-        # Filter for the specified position
-        board_df = board_df.filter((pl.col('pos') == pos)).drop('pos')
+        board_df = board_df[board_columns].filter(pl.col('pos').is_in(['QB', 'RB', 'WR', 'TE']))
 
         # Rename columns for a user-friendly final DataFrame.
         board_df = board_df.rename({
@@ -87,8 +82,6 @@ def create_board(pos: str, draft: bool = False) -> pl.DataFrame:
 
     # Cast ID column as a string to ensure consistent filtering with other data sources, like league rosters.
     board_df = board_df.cast({'fantasypros_id': pl.String()})
-
-    # board_df = create_tiers(board_df, n_tiers=8)
 
     return board_df
 
@@ -139,7 +132,7 @@ def add_ages(board_df: pl.DataFrame) -> pl.DataFrame:
     board_df = board_df.rename({'age': 'Age'})
 
     # Re-select columns to ensure a consistent and logical order for display.
-    board_df = board_df.select(['fantasypros_id', 'Player', 'Team', 'Age', 'Bye', 'ECR', 'Best', 'Worst',
+    board_df = board_df.select(['fantasypros_id', 'Player', 'pos', 'Team', 'Age', 'Bye', 'ECR', 'Best', 'Worst',
                                 'Std', 'scrape_date'])
 
     return board_df
@@ -148,5 +141,5 @@ def add_ages(board_df: pl.DataFrame) -> pl.DataFrame:
 if __name__ == '__main__':
     pl.Config(tbl_rows=-1, tbl_cols=-1)
 
-    board_df = create_board('RB', draft=True)
+    board_df = create_board(draft=True)
     print(board_df)
