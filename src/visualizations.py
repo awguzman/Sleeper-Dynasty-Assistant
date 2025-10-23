@@ -9,7 +9,7 @@ import plotly.express as px
 
 def create_tier_chart(board_df: pl.DataFrame) -> go.Figure:
     """
-    Creates a tier chart showing player ECR with best/worst error bars.
+    Creates an interactive tier chart showing player ECR with best/worst error bars.
 
     Args:
         board_df (pl.DataFrame): A DataFrame containing player data with tiers,
@@ -22,7 +22,8 @@ def create_tier_chart(board_df: pl.DataFrame) -> go.Figure:
         # Return an empty figure if there's no data
         return go.Figure()
 
-    # Compute dynamic height for the chart based on n_players.
+    # Calculate a dynamic height for the chart to prevent it from being squished.
+    # We allocate a certain number of pixels per player.
     chart_height = board_df.height * 20
 
     # Prepare data for plotting
@@ -36,11 +37,12 @@ def create_tier_chart(board_df: pl.DataFrame) -> go.Figure:
         (pl.col('ECR') - pl.col('Best')).alias('error_minus')
     ])
 
-    # Cast Tier column to string for discrete color scheme.
-    board_df = board_df.with_columns((pl.lit("Tier ") + pl.col('Tier').cast(pl.String)).alias('Tier'))
+    # Prepend "Tier: " to the Tier column for a more descriptive legend.
+    # Casting to string also ensures Plotly uses a discrete (not gradient) color scale.
+    board_df = board_df.with_columns((pl.lit("Tier: ") + pl.col('Tier').cast(pl.String)).alias('Tier'))
 
 
-    # Create the plot
+    # Create the plot using Plotly Express for its simplicity with colors and error bars.
     fig = px.scatter(
         board_df.to_pandas(),
         x='ECR',
@@ -52,7 +54,7 @@ def create_tier_chart(board_df: pl.DataFrame) -> go.Figure:
         error_x_minus='error_minus'
     )
 
-    # Customize layout and hover template
+    # Customize the figure's layout.
     fig.update_layout(
         height=chart_height,
         title="Player Positional Ranking Tiers",
@@ -80,14 +82,14 @@ def create_tier_chart(board_df: pl.DataFrame) -> go.Figure:
             font=dict(size=10, color=tier_color_map.get(row['Tier'], 'lightgrey'))
         )
 
-    # Customize the hover text for the data points
+    # Customize the hover text for a informative tooltip.
     fig.update_traces(
         hovertemplate=(
             "<b>%{customdata[0]}</b><br>" +
             "Rank: %{y}<br>" +
             "ECR: %{x}<br>" +
             "Best: %{customdata[1]} | Worst: %{customdata[2]}<br>" +
-            "Tier: %{customdata[3]}<br>" +
+            "%{customdata[3]}<br>" +
             "Confidence: %{customdata[4]}" +
             "<extra></extra>"  # Hides the secondary box
         )
