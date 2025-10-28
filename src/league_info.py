@@ -43,7 +43,6 @@ def get_league_info(league_id: str) -> pl.DataFrame:
     # Combine active players and reserve players into a single list of sleeper_ids.
     league_df = league_df.with_columns((pl.col('players').list.concat(pl.col('reserve'))).alias('sleeper_ids'))
     league_df = league_df.drop(['players', 'reserve'])
-    # league_df = league_df.cast({'sleeper_ids': pl.List(pl.Int64())})
 
     # Load required player ID data from nflreadpy and create a lookup dictionary
     id_map_df = load_ff_playerids()[['sleeper_id', 'fantasypros_id']]

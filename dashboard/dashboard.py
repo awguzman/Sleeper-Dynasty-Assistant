@@ -3,20 +3,23 @@ This script defines the layout and callback logic for the Sleeper Dynasty Assist
 """
 import polars as pl
 import io
+
+# --- Dash/Plotly Imports ---
 import dash
 from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 
-from src.boards import create_board, remove_taken
+# --- Import Helper Functions ---
+from src.boards import create_board
 from src.league_info import get_league_info
 from src.tiers import create_tiers
 from src.visualizations import create_tier_chart
 
+# --- Configure Cache ---
 from pathlib import Path
 from nflreadpy.config import update_config
 
-# --- Configure Cache ---
 cache_dir = Path(__file__).resolve().parent.parent / 'cache'
 update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True, cache_duration=300)
 
@@ -47,11 +50,11 @@ app.layout = html.Div([
             ),
         ], style={'display': 'flex', 'align-items': 'center', 'margin-right': '50px'}),
 
-        # Owner ID Dropdown Group
+        # Owner Name Dropdown Group
         html.Div([
             html.Label("Select Owner: ", style={'margin-right': '10px'}),
             dcc.Dropdown(
-                id='owner-id-dropdown',
+                id='owner-name-dropdown',
                 placeholder='Your username',
                 style={'width': '250px'}
             ),
@@ -193,7 +196,7 @@ app.layout = html.Div([
 
 # --- Callback to Populate Owner Dropdown ---
 @app.callback(
-    Output('owner-id-dropdown', 'options'),
+    Output('owner-name-dropdown', 'options'),
     [Input('league-id-input', 'value')]
 )
 
@@ -211,10 +214,8 @@ def update_owner_dropdown(league_id):
     league_df = get_league_info(league_id)
     # Format the owner data into a list of dictionaries as required by dcc.Dropdown
     owner_options = (
-        league_df.select(['owner_name', 'owner_id'])
-        .rename({'owner_name': 'label', 'owner_id': 'value'})
-        .to_dicts()
-    )
+        league_df.select(pl.col('owner_name').alias('label'),
+                         pl.col('owner_name').alias('value')).to_dicts())
 
     return owner_options
 
@@ -235,12 +236,12 @@ def update_board_stores(league_id):
 
     # --- Create and store the full draft board (all positions) ---
     # This is the expensive part that we only want to do once per session.
-    draft_board_df = create_board(draft=True)
+    draft_board_df = create_board(league_id=league_id, draft=True)
     # Convert the DataFrame to a JSON string for storage.
     draft_data = draft_board_df.write_json()
 
     # --- Create and store the full weekly board (all positions) ---
-    weekly_board_df = create_board(draft=False)
+    weekly_board_df = create_board(league_id=league_id, draft=False)
     weekly_data = weekly_board_df.write_json()
 
     return draft_data, weekly_data
@@ -254,14 +255,14 @@ def update_board_stores(league_id):
         Output('draft-last-update', 'children')
     ],
     [
-        Input('owner-id-dropdown', 'value'),
+        Input('owner-name-dropdown', 'value'),
         Input('draft-board-store', 'data'),  # Listen to the data store
         Input('position-draft-selection', 'value'),
         Input('show-taken-draft-checkbox', 'value')
     ],
     [State('league-id-input', 'value')]  # Get league_id without re-triggering
 )
-def update_draft_table(owner_id, draft_data, position, show_taken_value, league_id):
+def update_draft_table(owner_name, draft_data, position, show_taken_value, league_id):
     """
     Updates the dynasty draft board table based on user selections.
 
@@ -269,21 +270,21 @@ def update_draft_table(owner_id, draft_data, position, show_taken_value, league_
     and performs fast, in-memory filtering.
     """
     # Ensure all necessary inputs are provided before attempting to fetch data.
-    if not all([owner_id, draft_data, position, league_id]):
+    if not all([owner_name, draft_data, position, league_id]):
         return [], [], ""
 
-    # 1. Load the full board from the store
+    # Load the full board from the store
     board_df = pl.read_json(io.StringIO(draft_data))
 
-    # 2. Filter for the selected position
+    # Filter for the selected position
     board_df = board_df.filter(pl.col('pos') == position)
 
     # The checklist's value is a list. It's not empty if the box is checked.
     show_taken_flag = bool(show_taken_value)
 
-    # 3. Apply roster filtering if needed
+    # Apply roster filtering if requested
     if not show_taken_flag:
-        board_df = remove_taken(league_id, owner_id, board_df)
+        board_df = board_df.filter((pl.col('Owner') == owner_name) | (pl.col('Owner') == 'Free Agent'))
 
     # Get scrape_date to represent the last update of the data.
     last_update_text = ""
@@ -309,14 +310,14 @@ def update_draft_table(owner_id, draft_data, position, show_taken_value, league_
         Output('proj-last-update', 'children')
     ],
     [
-        Input('owner-id-dropdown', 'value'),
+        Input('owner-name-dropdown', 'value'),
         Input('weekly-board-store', 'data'),  # Listen to the data store
         Input('position-proj-selection', 'value'),
         Input('show-taken-proj-checkbox', 'value')
     ],
     [State('league-id-input', 'value')]  # Get league_id without re-triggering
 )
-def update_proj_table(owner_id, weekly_data, position, show_taken_value, league_id):
+def update_proj_table(owner_name, weekly_data, position, show_taken_value, league_id):
     """
     Updates the weekly projections table based on user selections.
 
@@ -324,21 +325,21 @@ def update_proj_table(owner_id, weekly_data, position, show_taken_value, league_
     and performs fast, in-memory filtering.
     """
     # Ensure all necessary inputs are provided before attempting to fetch data.
-    if not all([owner_id, weekly_data, position, league_id]):
+    if not all([owner_name, weekly_data, position, league_id]):
         return [], [], ""
 
-    # 1. Load the full board from the store
+    # Load the full board from the store
     board_df = pl.read_json(io.StringIO(weekly_data))
 
-    # 2. Filter for the selected position
+    # Filter for the selected position
     board_df = board_df.filter(pl.col('pos') == position)
 
     # The checklist's value is a list. It's not empty if the box is checked.
     show_taken_flag = bool(show_taken_value)
 
-    # 3. Apply roster filtering if needed
+    # Apply roster filtering if requested
     if not show_taken_flag:
-        board_df = remove_taken(league_id, owner_id, board_df)
+        board_df = board_df.filter((pl.col('Owner') == owner_name) | (pl.col('Owner') == 'Free Agent'))
 
     # Get scrape_date to represent the last update of the data.
     last_update_text = ""
@@ -378,11 +379,13 @@ def update_tier_chart(draft_data, weekly_data, position, board_type):
     if board_type == 'draft':
         board_data = draft_data
         n_players = {'QB': 32, 'RB': 64, 'WR': 96, 'TE': 32}
-        tier_range = {'QB': range(8, 12 + 1), 'RB': range(10, 14 + 1), 'WR': range(12, 16 + 1), 'TE': range(8, 12 + 1)}
+        tier_range = {'QB': range(8, 12 + 1), 'RB': range(10, 14 + 1),
+                      'WR': range(12, 16 + 1), 'TE': range(8, 12 + 1)}
     elif board_type == 'weekly':
         board_data = weekly_data
         n_players = {'QB': 24, 'RB': 40, 'WR': 60, 'TE': 24}
-        tier_range = {'QB': range(6, 10 + 1), 'RB': range(8, 12 + 1), 'WR': range(8, 12 + 1), 'TE': range(6, 10 + 1)}
+        tier_range = {'QB': range(6, 10 + 1), 'RB': range(8, 12 + 1),
+                      'WR': range(8, 12 + 1), 'TE': range(6, 10 + 1)}
     else:
         return go.Figure()
 
@@ -400,7 +403,7 @@ def update_tier_chart(draft_data, weekly_data, position, board_type):
         n_players=n_players[position]
     )
 
-    # 3. Generate the Plotly figure using the dedicated visualization function
+    # Generate the Plotly figure
     fig = create_tier_chart(tiered_df)
 
     return fig

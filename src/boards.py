@@ -12,7 +12,7 @@ from src.league_info import get_league_info
 from nflreadpy import load_ff_rankings, load_ff_playerids
 
 
-def create_board(draft: bool = False) -> pl.DataFrame:
+def create_board(league_id: int, draft: bool = False) -> pl.DataFrame:
     """
     Creates a full player ranking board for all positions.
 
@@ -21,6 +21,7 @@ def create_board(draft: bool = False) -> pl.DataFrame:
     2. A weekly board with in-season weekly ECR and projections.
 
     Args:
+        league_id (int): The Sleeper league ID for ownership information.
         draft (bool, optional): If True, creates a dynasty/draft board.
                                 If False, creates a weekly board. Defaults to False.
 
@@ -80,36 +81,19 @@ def create_board(draft: bool = False) -> pl.DataFrame:
             'r2p_pts': 'Proj. Points'
         })
 
+    #board_df = board_df.unique(subset=['fantasypros_id'], keep='first')
+
     # Cast ID column as a string to ensure consistent filtering with other data sources, like league rosters.
     board_df = board_df.cast({'fantasypros_id': pl.String()})
 
-    return board_df
+    # Add league ownership data
+    board_df = add_owners(league_id, board_df)
 
-def remove_taken(league_id: str, owner_id: str, board_df: pl.DataFrame) -> pl.DataFrame:
-    """
-    Filters a player board to remove players who are on other owners' rosters.
-
-    Args:
-        league_id (str): The Sleeper league ID.
-        owner_id (str): The user's owner ID. Players on this roster will NOT be removed.
-        board_df (pl.DataFrame): The player board to be filtered.
-
-    Returns:
-        pl.DataFrame: A filtered DataFrame containing only available players.
-    """
-    # Get the rosters of all other owners
-    league_df = get_league_info(league_id)
-    other_owners_df = league_df.filter(pl.col('owner_id') != owner_id)
-
-    # Create a single set of all players taken by other owners
-    taken_fp_ids = set()
-    for fp_id in other_owners_df['fantasypros_ids']:
-        taken_fp_ids.update(fp_id)
-
-    # Filter the board to exclude players whose fantasypros_id is in the taken set.
-    board_df = board_df.filter(~pl.col('fantasypros_id').is_in(taken_fp_ids))
+    # Drop duplicate players generated from add_owners join
+    board_df = board_df.unique(subset=['fantasypros_id'], maintain_order=True)
 
     return board_df
+
 
 def add_ages(board_df: pl.DataFrame) -> pl.DataFrame:
     """
@@ -137,9 +121,34 @@ def add_ages(board_df: pl.DataFrame) -> pl.DataFrame:
 
     return board_df
 
+def add_owners(league_id: str, board_df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Adds an "Owner" column based on league roster data to the player board.
+
+    Args:
+        league_id (str): The Sleeper league ID.
+        board_df (pl.DataFrame): The player board to add owners to.
+
+    Returns:
+        pl.DataFrame: The board with an 'Owner' column added.
+    """
+    # Get league roster data
+    league_df = get_league_info(league_id)
+
+    # Create a mapping from fantasypros_ids to owner_name.
+    owner_map = league_df.select(['owner_name', 'fantasypros_ids']).explode('fantasypros_ids')
+    owner_map = owner_map.rename({'owner_name': 'Owner', 'fantasypros_ids': 'fantasypros_id'})
+
+    # Join owner_map to the player board and fill null values.
+    board_df = board_df.join(owner_map, on='fantasypros_id', how='left')
+    board_df = board_df.with_columns(pl.col('Owner').fill_null('Free Agent'))
+
+    return board_df
+
 
 if __name__ == '__main__':
     pl.Config(tbl_rows=-1, tbl_cols=-1)
 
-    board_df = create_board(draft=True)
+    league_id = input('Enter Sleeper platform league number (This is found in the sleeper url):')
+    board_df = create_board(league_id, draft=True)
     print(board_df)
