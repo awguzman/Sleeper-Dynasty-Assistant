@@ -26,6 +26,9 @@ update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True, cache_
 # Initialize the Dash application. The __name__ is for Dash to locate static assets.
 app = dash.Dash(__name__)
 
+# Server variable
+server = app.server
+
 # --- App Layout ---
 # The layout is the root component that describes the application's appearance.
 app.layout = html.Div([
