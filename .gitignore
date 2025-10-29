@@ -1,1 +1,4 @@
-/cache/
+# Ignore all contents of the cache directory...
+/cache/*
+# ...but do NOT ignore the .gitkeep file, which forces the directory to be tracked.
+!/cache/.gitkeep
