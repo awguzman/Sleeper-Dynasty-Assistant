@@ -67,9 +67,9 @@ app.layout = html.Div([
     html.Br(),
 
     # --- Main Tabbed Interface ---
-    dcc.Tabs([
+    dcc.Tabs(children=[
         # --- Dynasty Draft Board Tab ---
-        dcc.Tab(label='Draft Board', children=[
+        dcc.Tab(label='Draft Board', className='custom-tab', selected_className='custom-tab-selected', children=[
             html.Br(),
             html.Div([
                     # Group for left-aligned items
@@ -142,7 +142,7 @@ app.layout = html.Div([
                 html.Hr(),
                 dcc.Markdown("""
                 Note: "Last Update" refers to the last update of data provided by FantasyPros. This application has no 
-                control over the frequency of updates.
+                control over the frequency of such updates.
                 
                 *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
                 *   **Best**: Most optimistic (lowest) ranking given to a player by any one expert.
@@ -153,7 +153,7 @@ app.layout = html.Div([
             ]),
 
         # --- Weekly Projections Tab ---
-        dcc.Tab(label='Weekly Projections', children=[
+        dcc.Tab(label='Weekly Projections', className='custom-tab', selected_className='custom-tab-selected', children=[
             html.Br(),
             html.Div([
                     # Group for left-aligned items
@@ -226,7 +226,7 @@ app.layout = html.Div([
                 html.Hr(),
                 dcc.Markdown("""
                 Note: "Last Update" refers to the last update of data provided by FantasyPros. This application has no 
-                control over the frequency of updates.
+                control over the frequency of such updates.
                 
                 *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
                 *   **Best**: Most optimistic (lowest) ranking given to a player by any one expert.
@@ -238,7 +238,7 @@ app.layout = html.Div([
             ]),
 
         # --- Tiers Visualization Tab ---
-        dcc.Tab(label='Positional Rank Tiers', children=[
+        dcc.Tab(label='Positional Rank Tiers', className='custom-tab', selected_className='custom-tab-selected', children=[
             html.Br(),
             html.Div([
                     # Group for left-aligned items
@@ -285,7 +285,7 @@ app.layout = html.Div([
                 dcc.Markdown("""
                 Note: Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
                 cluster players into statistically similar tiers. This should be viewed as a measure of how similar any two 
-                players are ranked by FantasyPros. It does not necessarily predict performance.
+                players are ranked by FantasyPros.
                 
                 Inspired by analysis of Boris Chen, see www.borischen.co
                 """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
@@ -514,7 +514,7 @@ def update_tier_chart(draft_data, weekly_data, position, board_type):
     if board_type == 'draft':
         board_data = draft_data
         n_players = {'QB': 32, 'RB': 64, 'WR': 96, 'TE': 32} # Number of players to cluster by position.
-        tier_range = {'QB': range(8, 10 + 1), 'RB': range(10, 12 + 1), # Range for number of vlusters to test using BIC
+        tier_range = {'QB': range(8, 10 + 1), 'RB': range(10, 12 + 1), # Range for number of clusters to test using BIC
                       'WR': range(12, 14 + 1), 'TE': range(8, 10 + 1)}
     elif board_type == 'weekly':
         board_data = weekly_data

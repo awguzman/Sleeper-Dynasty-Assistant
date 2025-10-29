@@ -1,0 +1,42 @@
+/* --- Import a clean, modern font from Google Fonts --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@350;650&display=swap');
+
+/* --- Apply global styles to the entire application --- */
+body {
+    /* Set the default font for all text */
+    font-family: 'Inter', sans-serif;
+
+    /* Define a base background and text color for the app */
+    background-color: White; /* White page background */
+    color: Black; /* Black text */
+}
+
+/* --- Style headers to use the bold weight of the font --- */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+}
+
+/* --- Force DataTable to inherit the global font --- */
+.dash-spreadsheet-container .dash-spreadsheet-inner td,
+.dash-spreadsheet-container .dash-spreadsheet-inner th {
+    font-family: 'Inter', sans-serif;
+}
+
+/* --- General tab styling --- */
+.custom-tab {
+    background-color: #e0e0e0; /* Slightly darker than background for unselected tabs */
+    color: #000000;
+    border: 1px solid #cccccc;
+    padding: 10px 15px;
+    font-weight: 350;
+}
+
+/* --- Active tab styling --- */
+.custom-tab-selected {
+    background-color: White;
+    color: Black;
+    border-top: 2px solid #007bff !Important; /* A thicker border for emphasis */
+    border-left: 2px solid #007bff !Important; /* A thicker border for emphasis */
+    border-right: 2px solid #007bff !Important; /* A thicker border for emphasis */
+    font-weight: bold;
+}
