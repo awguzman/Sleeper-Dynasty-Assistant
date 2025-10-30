@@ -102,6 +102,6 @@ if __name__ == '__main__':
 
     from src.boards import create_board
     from src.tiers import create_tiers
-    board_df = create_board(draft=True).filter(pl.col('pos') == 'WR')
+    board_df = create_board(league_id=None, draft=False).filter(pl.col('pos') == 'QB')
     board_df = create_tiers(board_df, tier_range=range(10,12+1), n_players=60)
     print(create_tier_chart(board_df).show())
