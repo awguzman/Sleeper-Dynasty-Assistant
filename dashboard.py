@@ -1,6 +1,7 @@
 """
 This script defines the layout and callback logic for the Sleeper Dynasty Assistant dashboard.
 """
+
 import polars as pl
 import io
 
@@ -42,7 +43,7 @@ app.layout = html.Div([
     # --- Global Controls ---
     # These inputs for league and owner are placed outside the tabs so they
     # can be used as persistent filters across all views.
-    html.Div([
+    html.Div(children=[
         # League ID Input Group
         html.Div([
             html.Label("Enter Sleeper League ID: ", style={'margin-right': '10px'}),
@@ -59,6 +60,7 @@ app.layout = html.Div([
             dcc.Dropdown(
                 id='owner-name-dropdown',
                 placeholder='Your username',
+                disabled=True, # Disabled until league_id provided.
                 style={'width': '250px'}
             ),
         ], style={'display': 'flex', 'align-items': 'center'}),
@@ -75,6 +77,7 @@ app.layout = html.Div([
                     # Group for left-aligned items
                     html.Div([
                         html.Label("Position: ", style={'margin-right': '20px'}),
+                        # Position choices.
                         dcc.RadioItems(
                             id='position-draft-selection',
                             options=[
@@ -89,7 +92,7 @@ app.layout = html.Div([
                         ),
                     ], style={'display': 'flex', 'align-items': 'center'}),
 
-                    # This item will be pushed to the right
+                    # Show taken players checkbox
                     dcc.Checklist(
                         id='show-taken-draft-checkbox',
                         options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
@@ -99,7 +102,7 @@ app.layout = html.Div([
 
                 html.Br(),
 
-                # Add a Div to provide padding on the left and right of the table
+                # Draft board table
                 html.Div(style={'padding': '0px 25px'}, children=[
                     dcc.Loading(
                         id='loading-draft-table',
@@ -138,7 +141,7 @@ app.layout = html.Div([
                     )
                 ]
                 ),
-
+                # Bottom text box
                 html.Hr(),
                 dcc.Markdown("""
                 Note: "Last Update" refers to the last update of data provided by FantasyPros. This application has no 
@@ -156,7 +159,7 @@ app.layout = html.Div([
         dcc.Tab(label='Weekly Projections', className='custom-tab', selected_className='custom-tab-selected', children=[
             html.Br(),
             html.Div([
-                    # Group for left-aligned items
+                    # Position selection
                     html.Div([
                         html.Label("Position: ", style={'margin-right': '20px'}),
                         dcc.RadioItems(
@@ -173,7 +176,7 @@ app.layout = html.Div([
                         ),
                     ], style={'display': 'flex', 'align-items': 'center'}),
 
-                    # This item will be pushed to the right
+                    # Show taken players checkbox
                     dcc.Checklist(
                         id='show-taken-proj-checkbox',
                         options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
@@ -183,7 +186,7 @@ app.layout = html.Div([
 
                 html.Br(),
 
-                # Add a Div to provide padding on the left and right of the table
+                # Weekly projections table
                 html.Div(style={'padding': '0px 25px'}, children=[
                     dcc.Loading(
                         id='loading-proj-table',
@@ -223,6 +226,7 @@ app.layout = html.Div([
                 ]
                 ),
 
+                # Bottom text box
                 html.Hr(),
                 dcc.Markdown("""
                 Note: "Last Update" refers to the last update of data provided by FantasyPros. This application has no 
@@ -241,7 +245,7 @@ app.layout = html.Div([
         dcc.Tab(label='Positional Rank Tiers', className='custom-tab', selected_className='custom-tab-selected', children=[
             html.Br(),
             html.Div([
-                    # Group for left-aligned items
+                    # Position selection
                     html.Div([
                         html.Label("Position: ", style={'margin-right': '20px'}),
                         dcc.RadioItems(
@@ -258,7 +262,7 @@ app.layout = html.Div([
                         ),
                     ], style={'display': 'flex', 'align-items': 'center'}),
 
-                    # Radio buttons to select board type on the right
+                    # Radio buttons to select board type
                     dcc.RadioItems(
                         id='board-type-selection',
                         options=[
@@ -281,6 +285,7 @@ app.layout = html.Div([
                     children=dcc.Graph(id='tier-chart-graph')
                 ),
 
+                # Bottom text box
                 html.Hr(),
                 dcc.Markdown("""
                 Note: Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
@@ -295,12 +300,14 @@ app.layout = html.Div([
 
 
 
-# --- Callback to Populate Owner Dropdown ---
+# --- Callbacks to Enable/Disable League-Specific Controls ---
 @app.callback(
-    Output('owner-name-dropdown', 'options'),
+    [Output('owner-name-dropdown', 'options'),
+     Output('owner-name-dropdown', 'disabled'),
+     Output('show-taken-draft-checkbox', 'options'), # Control options to disable
+     Output('show-taken-proj-checkbox', 'options')],  # Control options to disable
     [Input('league-id-input', 'value')]
 )
-
 def update_owner_dropdown(league_id):
     """
     Populates the owner ID dropdown based on the entered league ID.
@@ -309,36 +316,32 @@ def update_owner_dropdown(league_id):
     It fetches the league's user data and formats it for the dropdown.
     """
     # Prevent callback from firing with an empty league ID.
-    if not league_id:
-        return []
-
-    league_df = get_league_info(league_id)
-    # Format the owner data into a list of dictionaries as required by dcc.Dropdown
-    owner_options = (
-        league_df.select(pl.col('owner_name').alias('label'),
-                         pl.col('owner_name').alias('value')).to_dicts())
-
-    return owner_options
+    if league_id:
+        league_df = get_league_info(league_id)
+        owner_options = (
+            league_df.select(pl.col('owner_name').alias('label'),
+                             pl.col('owner_name').alias('value')).to_dicts())
+        checkbox_options = [{'label': 'Show Taken Players', 'value': 'show_taken'}] # Control options to enable
+        # Enable the controls
+        return owner_options, False, checkbox_options, checkbox_options
+    # If no league_id, return empty owner options, disable owner dropdown, and disable checkboxes (by providing empty options)
+    return [], True, [], []
 
 
 # --- Master Callback to Compute and Store Full Board Data ---
 @app.callback(
     [Output('draft-board-store', 'data'),
      Output('weekly-board-store', 'data')],
-    [Input('league-id-input', 'value')]
+    [Input('league-id-input', 'value')],
+    prevent_initial_call=False  # Ensure this runs on page load
 )
 def update_board_stores(league_id):
     """
     This master callback runs the expensive computations once and stores the results.
     It's triggered only when the league ID changes, signifying a new context.
     """
-    if not league_id:
-        return None, None
-
     # --- Create and store the full draft board (all positions) ---
-    # This is the expensive part that we only want to do once per session.
     draft_board_df = create_board(league_id=league_id, draft=True)
-    # Convert the DataFrame to a JSON string for storage.
     draft_data = draft_board_df.write_json()
 
     # --- Create and store the full weekly board (all positions) ---
@@ -372,7 +375,7 @@ def update_draft_table(owner_name, draft_data, position, show_taken_value, leagu
     and performs fast, in-memory filtering.
     """
     # Ensure all necessary inputs are provided before attempting to fetch data.
-    if not all([owner_name, draft_data, position, league_id]):
+    if not all([draft_data, position]):
         return [], [], "", []
 
     # Load the full board from the store
@@ -385,7 +388,7 @@ def update_draft_table(owner_name, draft_data, position, show_taken_value, leagu
     show_taken_flag = bool(show_taken_value)
 
     # Apply roster filtering if requested
-    if not show_taken_flag:
+    if not show_taken_flag and league_id and owner_name:
         board_df = board_df.filter((pl.col('Owner') == owner_name) | (pl.col('Owner') == 'Free Agent'))
 
     # Get scrape_date to represent the last update of the data.
@@ -395,26 +398,27 @@ def update_draft_table(owner_name, draft_data, position, show_taken_value, leagu
         scrape_date = board_df['scrape_date'][0]
         last_update_text = f"Last Update: {scrape_date}"
 
-    # Drop the fantasypros_id and scrape_date columns for readability
-    board_df = board_df.drop(['fantasypros_id', 'scrape_date', 'pos'])
-
-    # --- Generate Conditional Styling ---
+    # --- Generate Conditional Styling & Final Columns ---
     styles = []
+    columns_to_drop = ['fantasypros_id', 'scrape_date', 'pos']
 
-    # Style for the user's owned players (light blue)
-    if owner_name:
+    # Only apply ownership styling and show Owner column if a league is active
+    if league_id:
+        if owner_name:
+            styles.append({
+                'if': {'filter_query': '{Owner} = "' + owner_name + '"'},
+                'backgroundColor': 'rgba(0, 123, 255, 0.15)',
+            })
         styles.append({
-            'if': {'filter_query': '{Owner} = "' + owner_name + '"'},
-            'backgroundColor': 'rgba(0, 123, 255, 0.2)', # Light blue with transparency
+            'if': {'filter_query': '{Owner} = "Free Agent"'},
+            'backgroundColor': 'rgba(40, 167, 69, 0.15)',
         })
-
-    # Style for Free Agents (light green)
-    styles.append({
-        'if': {'filter_query': '{Owner} = "Free Agent"'},
-        'backgroundColor': 'rgba(40, 167, 69, 0.2)', # Light green with transparency
-    })
+    else:
+        # If no league, hide the 'Owner' column
+        columns_to_drop.append('Owner')
 
     # Format the DataFrame for the Dash DataTable
+    board_df = board_df.drop(columns_to_drop)
     columns = [{"name": i, "id": i} for i in board_df.columns]
     data = board_df.to_dicts()
 
@@ -444,7 +448,7 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value, leagu
     and performs fast, in-memory filtering.
     """
     # Ensure all necessary inputs are provided before attempting to fetch data.
-    if not all([owner_name, weekly_data, position, league_id]):
+    if not all([weekly_data, position]):
         return [], [], "", [] # Return empty list for styles
 
     # Load the full board from the store
@@ -457,7 +461,7 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value, leagu
     show_taken_flag = bool(show_taken_value)
 
     # Apply roster filtering if requested
-    if not show_taken_flag:
+    if not show_taken_flag and league_id and owner_name:
         board_df = board_df.filter((pl.col('Owner') == owner_name) | (pl.col('Owner') == 'Free Agent'))
 
     # Get scrape_date to represent the last update of the data.
@@ -467,26 +471,27 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value, leagu
         scrape_date = board_df['scrape_date'][0]
         last_update_text = f"Last Update: {scrape_date}"
 
-    # Drop the fantasypros_id and scrape_date columns for readability
-    board_df = board_df.drop(['fantasypros_id', 'scrape_date', 'pos'])
-
-    # --- Generate Conditional Styling ---
+    # --- Generate Conditional Styling & Final Columns ---
     styles = []
+    columns_to_drop = ['fantasypros_id', 'scrape_date', 'pos']
 
-    # Style for the user's owned players (light blue)
-    if owner_name:
+    # Only apply ownership styling and show Owner column if a league is active
+    if league_id:
+        if owner_name:
+            styles.append({
+                'if': {'filter_query': '{Owner} = "' + owner_name + '"'},
+                'backgroundColor': 'rgba(0, 123, 255, 0.15)',
+            })
         styles.append({
-            'if': {'filter_query': '{Owner} = "' + owner_name + '"'},
-            'backgroundColor': 'rgba(0, 123, 255, 0.2)', # Light blue with transparency
+            'if': {'filter_query': '{Owner} = "Free Agent"'},
+            'backgroundColor': 'rgba(40, 167, 69, 0.15)',
         })
-
-    # Style for Free Agents (light green)
-    styles.append({
-        'if': {'filter_query': '{Owner} = "Free Agent"'},
-        'backgroundColor': 'rgba(40, 167, 69, 0.2)', # Light green with transparency
-    })
+    else:
+        # If no league, hide the 'Owner' column
+        columns_to_drop.append('Owner')
 
     # Format the DataFrame for the Dash DataTable
+    board_df = board_df.drop(columns_to_drop)
     columns = [{"name": i, "id": i} for i in board_df.columns]
     data = board_df.to_dicts()
 

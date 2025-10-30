@@ -12,7 +12,7 @@ from src.league_info import get_league_info
 from nflreadpy import load_ff_rankings, load_ff_playerids
 
 
-def create_board(league_id: int, draft: bool = False) -> pl.DataFrame:
+def create_board(league_id: int | None, draft: bool = False) -> pl.DataFrame:
     """
     Creates a full player ranking board for all positions.
 
@@ -21,7 +21,7 @@ def create_board(league_id: int, draft: bool = False) -> pl.DataFrame:
     2. A weekly board with in-season weekly ECR and projections.
 
     Args:
-        league_id (int): The Sleeper league ID for ownership information.
+        league_id (int, optional): The Sleeper league ID for ownership information. If None, no owners are added.
         draft (bool, optional): If True, creates a dynasty/draft board.
                                 If False, creates a weekly board. Defaults to False.
 
@@ -81,13 +81,15 @@ def create_board(league_id: int, draft: bool = False) -> pl.DataFrame:
             'r2p_pts': 'Proj. Points'
         })
 
-    #board_df = board_df.unique(subset=['fantasypros_id'], keep='first')
-
     # Cast ID column as a string to ensure consistent filtering with other data sources, like league rosters.
     board_df = board_df.cast({'fantasypros_id': pl.String()})
 
     # Add league ownership data
-    board_df = add_owners(league_id, board_df)
+    if league_id:
+        board_df = add_owners(league_id, board_df)
+    else:
+        # If no loeague_id, add placeholder Owner column.
+        board_df = board_df.with_columns(pl.lit('N/A').alias('Owner'))
 
     # Drop duplicate players generated from add_owners join
     board_df = board_df.unique(subset=['fantasypros_id'], maintain_order=True)
