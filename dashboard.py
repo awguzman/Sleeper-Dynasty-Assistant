@@ -1,5 +1,5 @@
 """
-This script defines the layout and callback logic for the Sleeper Dynasty Assistant dashboard.
+This module defines the layout and callback logic for the Sleeper Dynasty Assistant dashboard.
 """
 
 import polars as pl
@@ -41,10 +41,9 @@ app.layout = html.Div([
     html.H1("Sleeper Dynasty Assistant"),
 
     # --- Global Controls ---
-    # These inputs for league and owner are placed outside the tabs so they
-    # can be used as persistent filters across all views.
+    # These inputs for league and owner are placed outside the tabs to be persistant
     html.Div(children=[
-        # League ID Input Group
+        # League ID Input
         html.Div([
             html.Label("Enter Sleeper League ID: ", style={'margin-right': '10px'}),
             dcc.Input(
@@ -54,7 +53,7 @@ app.layout = html.Div([
             ),
         ], style={'display': 'flex', 'align-items': 'center', 'margin-right': '50px'}),
 
-        # Owner Name Dropdown Group
+        # Owner Name Dropdown
         html.Div([
             html.Label("Select Owner: ", style={'margin-right': '10px'}),
             dcc.Dropdown(
@@ -65,236 +64,274 @@ app.layout = html.Div([
             ),
         ], style={'display': 'flex', 'align-items': 'center'}),
     ], style={'display': 'flex', 'align-items': 'center'}),
-
     html.Br(),
+
 
     # --- Main Tabbed Interface ---
     dcc.Tabs(children=[
-        # --- Dynasty Draft Board Tab ---
-        dcc.Tab(label='Draft Board', className='custom-tab', selected_className='custom-tab-selected', children=[
-            html.Br(),
-            html.Div([
-                    # Group for left-aligned items
+        # --- Top Level Tab: Draft Tools ---
+        dcc.Tab(label='Draft Tools', className='custom-top-tab', selected_className='custom-top-tab-selected', children=[
+            # --- Nested Tabs for parent Draft Tools tab
+            dcc.Tabs(className='nested-tabs-container', children=[
+                # --- Draft Board tab ---
+                dcc.Tab(label='Draft Board', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
+                    html.Br(),
                     html.Div([
-                        html.Label("Position: ", style={'margin-right': '20px'}),
-                        # Position choices.
-                        dcc.RadioItems(
-                            id='position-draft-selection',
-                            options=[
-                                {'label': 'Quarterback', 'value': 'QB'},
-                                {'label': 'Running Back', 'value': 'RB'},
-                                {'label': 'Wide Receiver', 'value': 'WR'},
-                                {'label': 'Tight End', 'value': 'TE'},
-                            ],
-                            value='QB',  # Default value
-                            inline=True,  # Display options horizontally
-                            labelStyle={'margin-right': '20px'}  # Add space between radio items
+                        # Group for left-aligned items
+                        html.Div([
+                            html.Label("Position: ", style={'margin-right': '20px'}),
+                            # Position choices.
+                            dcc.RadioItems(
+                                id='position-draft-selection',
+                                options=[
+                                    {'label': 'Quarterback', 'value': 'QB'},
+                                    {'label': 'Running Back', 'value': 'RB'},
+                                    {'label': 'Wide Receiver', 'value': 'WR'},
+                                    {'label': 'Tight End', 'value': 'TE'},
+                                ],
+                                value='QB',  # Default value
+                                inline=True,  # Display options horizontally
+                                labelStyle={'margin-right': '20px'}  # Add space between radio items
+                            ),
+                        ], style={'display': 'flex', 'align-items': 'center'}),
+
+                        # Show taken players checkbox
+                        dcc.Checklist(
+                            id='show-taken-draft-checkbox',
+                            options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
+                            value=[],  # Default to unchecked
                         ),
-                    ], style={'display': 'flex', 'align-items': 'center'}),
+                    ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
+                    html.Br(),
 
-                    # Show taken players checkbox
-                    dcc.Checklist(
-                        id='show-taken-draft-checkbox',
-                        options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
-                        value=[],  # Default to unchecked
-                    ),
-                ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
-
-                html.Br(),
-
-                # Draft board table
-                html.Div(style={'padding': '0px 25px'}, children=[
-                    dcc.Loading(
-                        id='loading-draft-table',
-                        type='circle',
-                        children=[
-                            # Add a placeholder for the "Last Update" text
-                            html.Div(id='draft-last-update', style={'text-align': 'right', 'color': 'grey',
-                                                                    'font-style': 'italic', 'margin-bottom': '5px'}),
-                            dash_table.DataTable(
-                                id='draft-table',
-                                style_data_conditional=[],
-                                style_table={'overflowX': 'auto'},
-                                style_header={
-                                    'fontWeight': 'bold'
-                                },
-                                # Base styles for all cells
-                                style_cell={
-                                    'textAlign': 'left',
-                                    'padding': '5px',
-                                    'whiteSpace': 'normal',
-                                    'height': 'auto',
-                                },
-                                # Conditional styles for specific columns
-                                style_cell_conditional=[
-                                    {
-                                        'if': {'column_id': ['Player', 'Owner']},
-                                        'width': '180px', 'minWidth': '180px', 'maxWidth': '250px',
+                    # Draft board table
+                    html.Div(style={'padding': '0px 25px'}, children=[
+                        dcc.Loading(
+                            id='loading-draft-table',
+                            type='circle',
+                            children=[
+                                # Add a placeholder for the "Last Update" text
+                                html.Div(id='draft-last-update', style={'text-align': 'right', 'color': 'grey',
+                                                                        'font-style': 'italic',
+                                                                        'margin-bottom': '5px'}),
+                                dash_table.DataTable(
+                                    id='draft-table',
+                                    style_data_conditional=[],
+                                    style_table={'overflowX': 'auto'},
+                                    style_header={
+                                        'fontWeight': 'bold'
                                     },
-                                    {
-                                        'if': {'column_id': ['Team', 'ECR', 'Best', 'Worst', 'Std', 'Age', 'Bye']},
-                                        'width': '80px', 'minWidth': '80px', 'maxWidth': '80px',
-                                    }
-                                ]
-                            )
-                        ]
-                    )
-                ]
-                ),
-                # Bottom text box
-                html.Hr(),
-                dcc.Markdown("""
-                Note: "Last Update" refers to the last update of data provided by FantasyPros. This application has no 
-                control over the frequency of such updates.
-                
-                *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
-                *   **Best**: Most optimistic (lowest) ranking given to a player by any one expert.
-                *   **Worst**: Most pessimistic (highest) ranking given to a player by any one expert.
-                *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
-                
-                """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
-            ]),
-
-        # --- Weekly Projections Tab ---
-        dcc.Tab(label='Weekly Projections', className='custom-tab', selected_className='custom-tab-selected', children=[
-            html.Br(),
-            html.Div([
-                    # Position selection
-                    html.Div([
-                        html.Label("Position: ", style={'margin-right': '20px'}),
-                        dcc.RadioItems(
-                            id='position-proj-selection',
-                            options=[
-                                {'label': 'Quarterback', 'value': 'QB'},
-                                {'label': 'Running Back', 'value': 'RB'},
-                                {'label': 'Wide Receiver', 'value': 'WR'},
-                                {'label': 'Tight End', 'value': 'TE'},
-                            ],
-                            value='QB',  # Default value
-                            inline=True,  # Display options horizontally
-                            labelStyle={'margin-right': '20px'}  # Add space between radio items
-                        ),
-                    ], style={'display': 'flex', 'align-items': 'center'}),
-
-                    # Show taken players checkbox
-                    dcc.Checklist(
-                        id='show-taken-proj-checkbox',
-                        options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
-                        value=[],  # Default to unchecked
-                    ),
-                ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
-
-                html.Br(),
-
-                # Weekly projections table
-                html.Div(style={'padding': '0px 25px'}, children=[
-                    dcc.Loading(
-                        id='loading-proj-table',
-                        type='circle',
-                        children=[
-                            # Add a placeholder for the "Last Update" text
-                            html.Div(id='proj-last-update', style={'text-align': 'right', 'color': 'grey',
-                                                                   'font-style': 'italic', 'margin-bottom': '5px'}),
-                            dash_table.DataTable(
-                                id='proj-table',
-                                style_data_conditional=[],
-                                style_table={'overflowX': 'auto'},
-                                style_header={
-                                    'fontWeight': 'bold'
-                                },
-                                # Base styles for all cells
-                                style_cell={
-                                    'textAlign': 'left',
-                                    'padding': '5px',
-                                    'whiteSpace': 'normal',
-                                    'height': 'auto',
-                                },
-                                # Conditional styles for specific columns
-                                style_cell_conditional=[
-                                    {
-                                        'if': {'column_id': ['Player', 'Owner']},
-                                        'width': '150px', 'minWidth': '150px', 'maxWidth': '250px',
+                                    # Base styles for all cells
+                                    style_cell={
+                                        'textAlign': 'left',
+                                        'padding': '5px',
+                                        'whiteSpace': 'normal',
+                                        'height': 'auto',
                                     },
-                                    {
-                                        'if': {'column_id': ['ECR','Team', 'Opponent', 'Start Grade', 'Best', 'Worst', 'Std', 'Rank', 'Proj. Points']},
-                                        'width': '80px', 'minWidth': '80px', 'maxWidth': '80px',
-                                    }
-                                ]
-                            )
-                        ]
-                    )
-                ]
-                ),
-
-                # Bottom text box
-                html.Hr(),
-                dcc.Markdown("""
-                Note: "Last Update" refers to the last update of data provided by FantasyPros. This application has no 
-                control over the frequency of such updates.
+                                    # Conditional styles for specific columns
+                                    style_cell_conditional=[
+                                        {
+                                            'if': {'column_id': ['Player', 'Owner']},
+                                            'width': '180px', 'minWidth': '180px', 'maxWidth': '250px',
+                                        },
+                                        {
+                                            'if': {'column_id': ['Team', 'ECR', 'Best', 'Worst', 'Std', 'Age', 'Bye']},
+                                            'width': '80px', 'minWidth': '80px', 'maxWidth': '80px',
+                                        }
+                                    ]
+                                )
+                            ]
+                        )
+                    ]
+                             ),
+                    # Bottom text box
+                    html.Hr(),
+                    dcc.Markdown("""
+                    Note: "Last Update" refers to the last update of data provided by FantasyPros. This application has no 
+                    control over the frequency of such updates.
                 
-                *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
-                *   **Best**: Most optimistic (lowest) ranking given to a player by any one expert.
-                *   **Worst**: Most pessimistic (highest) ranking given to a player by any one expert.
-                *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
+                    *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
+                    *   **Best**: Most optimistic (lowest) ranking given to a player by any one expert.
+                    *   **Worst**: Most pessimistic (highest) ranking given to a player by any one expert.
+                    *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
                 
-                """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
-
-            ]),
-
-        # --- Tiers Visualization Tab ---
-        dcc.Tab(label='Positional Rank Tiers', className='custom-tab', selected_className='custom-tab-selected', children=[
-            html.Br(),
-            html.Div([
-                    # Position selection
+                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
+                ]),
+                # --- Draft Tiers tab ---
+                dcc.Tab(label='Draft Tiers', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
+                    html.Br(),
                     html.Div([
-                        html.Label("Position: ", style={'margin-right': '20px'}),
-                        dcc.RadioItems(
-                            id='position-tier-selection',
-                            options=[
-                                {'label': 'Quarterback', 'value': 'QB'},
-                                {'label': 'Running Back', 'value': 'RB'},
-                                {'label': 'Wide Receiver', 'value': 'WR'},
-                                {'label': 'Tight End', 'value': 'TE'},
-                            ],
-                            value='RB',  # Default value
-                            inline=True,
-                            labelStyle={'margin-right': '20px'}
-                        ),
-                    ], style={'display': 'flex', 'align-items': 'center'}),
+                        # Position selection
+                        html.Div([
+                            html.Label("Position: ", style={'margin-right': '20px'}),
+                            dcc.RadioItems(
+                                id='position-draft-tier-selection',
+                                options=[
+                                    {'label': 'Quarterback', 'value': 'QB'},
+                                    {'label': 'Running Back', 'value': 'RB'},
+                                    {'label': 'Wide Receiver', 'value': 'WR'},
+                                    {'label': 'Tight End', 'value': 'TE'},
+                                ],
+                                value='QB',  # Default value
+                                inline=True,
+                                labelStyle={'margin-right': '20px'}
+                            ),
+                        ], style={'display': 'flex', 'align-items': 'center'}),
+                    ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
+                    html.Br(),
 
-                    # Radio buttons to select board type
-                    dcc.RadioItems(
-                        id='board-type-selection',
-                        options=[
-                            {'label': 'Draft Tiers', 'value': 'draft'},
-                            {'label': 'Weekly Tiers', 'value': 'weekly'},
-                        ],
-                        value='weekly', # Default to weekly tiers
-                        inline=True,
-                        labelStyle={'margin-left': '20px'}
+                    dcc.Loading(
+                        id='loading-draft-tier-chart',
+                        type='circle',
+                        # Graph component to display the Plotly figure
+                        children=dcc.Graph(id='draft-tier-chart-graph')
                     ),
 
-                ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
-
-                html.Br(),
-
-                dcc.Loading(
-                    id='loading-tier-chart',
-                    type='circle',
-                    # Graph component to display the Plotly figure
-                    children=dcc.Graph(id='tier-chart-graph')
-                ),
-
-                # Bottom text box
-                html.Hr(),
-                dcc.Markdown("""
-                Note: Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
-                cluster players into statistically similar tiers. This should be viewed as a measure of how similar any two 
-                players are ranked by FantasyPros.
+                    # Bottom text box
+                    html.Hr(),
+                    dcc.Markdown("""
+                    Note: Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
+                    cluster players into statistically similar tiers. This should be viewed as a measure of how similar any two 
+                    players are ranked by FantasyPros.
                 
-                Inspired by analysis of Boris Chen, see www.borischen.co
-                """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
+                    Inspired by analysis of Boris Chen, see www.borischen.co
+                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
+
+                ]),
             ]),
+        ]),
+        # --- Top Level Tab: In-Season Tools ---
+        dcc.Tab(label='In-Season Tools', className='custom-top-tab', selected_className='custom-top-tab-selected', children=[
+            # --- Nested Tabs for parent In-Season Tools tab
+            dcc.Tabs(className='nested-tabs-container', children=[
+                # --- Draft Board tab ---
+                dcc.Tab(label='Weekly Projections', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
+                    html.Br(),
+                    html.Div([
+                        # Position selection
+                        html.Div([
+                            html.Label("Position: ", style={'margin-right': '20px'}),
+                            dcc.RadioItems(
+                                id='position-proj-selection',
+                                options=[
+                                    {'label': 'Quarterback', 'value': 'QB'},
+                                    {'label': 'Running Back', 'value': 'RB'},
+                                    {'label': 'Wide Receiver', 'value': 'WR'},
+                                    {'label': 'Tight End', 'value': 'TE'},
+                                ],
+                                value='QB',  # Default value
+                                inline=True,  # Display options horizontally
+                                labelStyle={'margin-right': '20px'}  # Add space between radio items
+                            ),
+                        ], style={'display': 'flex', 'align-items': 'center'}),
+
+                        # Show taken players checkbox
+                        dcc.Checklist(
+                            id='show-taken-proj-checkbox',
+                            options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
+                            value=[],  # Default to unchecked
+                        ),
+                    ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
+
+                    html.Br(),
+
+                    # Weekly projections table
+                    html.Div(style={'padding': '0px 25px'}, children=[
+                        dcc.Loading(
+                            id='loading-proj-table',
+                            type='circle',
+                            children=[
+                                # Add a placeholder for the "Last Update" text
+                                html.Div(id='proj-last-update', style={'text-align': 'right', 'color': 'grey',
+                                                                       'font-style': 'italic', 'margin-bottom': '5px'}),
+                                dash_table.DataTable(
+                                    id='proj-table',
+                                    style_data_conditional=[],
+                                    style_table={'overflowX': 'auto'},
+                                    style_header={
+                                        'fontWeight': 'bold'
+                                    },
+                                    # Base styles for all cells
+                                    style_cell={
+                                        'textAlign': 'left',
+                                        'padding': '5px',
+                                        'whiteSpace': 'normal',
+                                        'height': 'auto',
+                                    },
+                                    # Conditional styles for specific columns
+                                    style_cell_conditional=[
+                                        {
+                                            'if': {'column_id': ['Player', 'Owner']},
+                                            'width': '150px', 'minWidth': '150px', 'maxWidth': '250px',
+                                        },
+                                        {
+                                            'if': {
+                                                'column_id': ['ECR', 'Team', 'Opponent', 'Start Grade', 'Best', 'Worst',
+                                                              'Std', 'Rank', 'Proj. Points']},
+                                            'width': '80px', 'minWidth': '80px', 'maxWidth': '80px',
+                                        }
+                                    ]
+                                )
+                            ]
+                        )
+                    ]),
+
+                    # Bottom text box
+                    html.Hr(),
+                    dcc.Markdown("""
+                    Note: "Last Update" refers to the last update of data provided by FantasyPros. This application has no 
+                    control over the frequency of such updates.
+                
+                    *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
+                    *   **Best**: Most optimistic (lowest) ranking given to a player by any one expert.
+                    *   **Worst**: Most pessimistic (highest) ranking given to a player by any one expert.
+                    *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
+                
+                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
+                ]),
+                # --- Draft Tiers tab ---
+                dcc.Tab(label='Weekly Tiers', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
+                    html.Br(),
+                    html.Div([
+                        # Position selection
+                        html.Div([
+                            html.Label("Position: ", style={'margin-right': '20px'}),
+                            dcc.RadioItems(
+                                id='position-weekly-tier-selection',
+                                options=[
+                                    {'label': 'Quarterback', 'value': 'QB'},
+                                    {'label': 'Running Back', 'value': 'RB'},
+                                    {'label': 'Wide Receiver', 'value': 'WR'},
+                                    {'label': 'Tight End', 'value': 'TE'},
+                                ],
+                                value='QB',  # Default value
+                                inline=True,
+                                labelStyle={'margin-right': '20px'}
+                            ),
+                        ], style={'display': 'flex', 'align-items': 'center'}),
+                    ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
+                    html.Br(),
+
+                    dcc.Loading(
+                        id='loading-weekly-tier-chart',
+                        type='circle',
+                        # Graph component to display the Plotly figure
+                        children=dcc.Graph(id='weekly-tier-chart-graph')
+                    ),
+
+                    # Bottom text box
+                    html.Hr(),
+                    dcc.Markdown("""
+                    Note: Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
+                    cluster players into statistically similar tiers. This should be viewed as a measure of how similar any two 
+                    players are ranked by FantasyPros.
+                
+                    Inspired by analysis of Boris Chen, see www.borischen.co
+                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'}
+                    ),
+                ]),
+            ]),
+        ]),
     ]),
 ])
 
@@ -310,7 +347,8 @@ app.layout = html.Div([
 )
 def update_owner_dropdown(league_id):
     """
-    Populates the owner ID dropdown based on the entered league ID.
+    Populates the owner ID dropdown based on the entered league ID. If no league_id provided,
+    disable the dropdown along with the show_taken checkboxes.
 
     This callback is triggered whenever the 'league-id-input' value changes.
     It fetches the league's user data and formats it for the dropdown.
@@ -321,10 +359,10 @@ def update_owner_dropdown(league_id):
         owner_options = (
             league_df.select(pl.col('owner_name').alias('label'),
                              pl.col('owner_name').alias('value')).to_dicts())
-        checkbox_options = [{'label': 'Show Taken Players', 'value': 'show_taken'}] # Control options to enable
+        checkbox_options = [{'label': 'Show Taken Players', 'value': 'show_taken'}] # Default control options to enable.
         # Enable the controls
         return owner_options, False, checkbox_options, checkbox_options
-    # If no league_id, return empty owner options, disable owner dropdown, and disable checkboxes (by providing empty options)
+    # If no league_id, return empty owner options, disable owner dropdown, and disable checkboxes
     return [], True, [], []
 
 
@@ -351,7 +389,7 @@ def update_board_stores(league_id):
     return draft_data, weekly_data
 
 
-# --- Callback to Update Draft Table ---
+# --- Callback to Update Draft Board Table ---
 @app.callback(
     [
         Output('draft-table', 'data'),
@@ -424,7 +462,8 @@ def update_draft_table(owner_name, draft_data, position, show_taken_value, leagu
 
     return data, columns, last_update_text, styles
 
-# --- Callback to Update Projections Table ---
+
+# --- Callback to Update Weekly Projections Table ---
 @app.callback(
     [
         Output('proj-table', 'data'),
@@ -498,42 +537,70 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value, leagu
     return data, columns, last_update_text, styles
 
 
-# --- Callback to Update Tiers Chart ---
+# --- Callback to Update Draft Tiers Chart ---
 @app.callback(
-    Output('tier-chart-graph', 'figure'),
+    Output('draft-tier-chart-graph', 'figure'),
     [
         Input('draft-board-store', 'data'),
-        Input('weekly-board-store', 'data'),
-        Input('position-tier-selection', 'value'),
-        Input('board-type-selection', 'value')
+        Input('position-draft-tier-selection', 'value'),
     ]
 )
-def update_tier_chart(draft_data, weekly_data, position, board_type):
+def update_draft_tier_chart(draft_data, position):
     """
     Generates and displays the player tier visualization.
 
     This callback reads the pre-computed draft board data, filters it,
     calculates tiers, and then creates the chart.
     """
-    # Select the correct data source based on the radio button selection
-    if board_type == 'draft':
-        board_data = draft_data
-        n_players = {'QB': 32, 'RB': 64, 'WR': 96, 'TE': 32} # Number of players to cluster by position.
-        tier_range = {'QB': range(8, 10 + 1), 'RB': range(10, 12 + 1), # Range for number of clusters to test using BIC
-                      'WR': range(12, 14 + 1), 'TE': range(8, 10 + 1)}
-    elif board_type == 'weekly':
-        board_data = weekly_data
-        n_players = {'QB': 24, 'RB': 40, 'WR': 60, 'TE': 24} # Number of players to cluster by position.
-        tier_range = {'QB': range(6, 8 + 1), 'RB': range(8, 10 + 1), # Range for number of clusters to test using BIC
-                      'WR': range(10, 12 + 1), 'TE': range(6, 8 + 1)}
-    else:
-        return go.Figure()
 
-    if not board_data or not position:
+    n_players = {'QB': 32, 'RB': 64, 'WR': 96, 'TE': 32}  # Number of players to cluster by position.
+    tier_range = {'QB': range(8, 10 + 1), 'RB': range(10, 12 + 1),  # Range for number of clusters to test using BIC
+                  'WR': range(12, 14 + 1), 'TE': range(8, 10 + 1)}
+
+    if not draft_data or not position:
         return go.Figure()
 
     # Load and filter the main board data
-    board_df = pl.read_json(io.StringIO(board_data))
+    board_df = pl.read_json(io.StringIO(draft_data))
+    position_df = board_df.filter(pl.col('pos') == position)
+
+    # Apply the tiering algorithm
+    tiered_df = create_tiers(
+        position_df,
+        tier_range=tier_range[position],
+        n_players=n_players[position]
+    )
+
+    # Generate the Plotly figure
+    fig = create_tier_chart(tiered_df)
+
+    return fig
+
+
+# --- Callback to Update Weekly Tiers Chart ---
+@app.callback(
+    Output('weekly-tier-chart-graph', 'figure'),
+    [
+        Input('weekly-board-store', 'data'),
+        Input('position-weekly-tier-selection', 'value'),
+    ]
+)
+def update_weekly_tier_chart(weekly_data, position):
+    """
+    Generates and displays the player tier visualization.
+
+    This callback reads the pre-computed weekly projections data, filters it,
+    calculates tiers, and then creates the chart.
+    """
+    n_players = {'QB': 24, 'RB': 40, 'WR': 60, 'TE': 24}  # Number of players to cluster by position.
+    tier_range = {'QB': range(6, 8 + 1), 'RB': range(8, 10 + 1),  # Range for number of clusters to test using BIC
+                  'WR': range(10, 12 + 1), 'TE': range(6, 8 + 1)}
+
+    if not weekly_data or not position:
+        return go.Figure()
+
+    # Load and filter the main board data
+    board_df = pl.read_json(io.StringIO(weekly_data))
     position_df = board_df.filter(pl.col('pos') == position)
 
     # Apply the tiering algorithm
