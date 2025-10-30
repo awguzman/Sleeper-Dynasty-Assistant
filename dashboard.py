@@ -38,7 +38,16 @@ app.layout = html.Div([
     dcc.Store(id='draft-board-store'),
     dcc.Store(id='weekly-board-store'),
 
-    html.H1("Sleeper Dynasty Assistant"),
+    # --- Header Section ---
+    html.Div([
+        html.H1("Sleeper Dynasty Assistant"),
+        html.A(
+            "Github",
+            href="https://github.com/awguzman/Sleeper-Dynasty-Assistant",
+            target="_blank",  # This opens the link in a new tab
+            style={'fontSize': '12px', 'textDecoration': 'none'}
+        )
+    ], style={'display': 'flex', 'justifyContent': 'space-between', 'alignItems': 'center', 'padding': '0px 25px'}),
 
     # --- Global Controls ---
     # These inputs for league and owner are placed outside the tabs to be persistant
@@ -51,7 +60,7 @@ app.layout = html.Div([
                 type='text',
                 placeholder='e.g., 992016434344030208'
             ),
-        ], style={'display': 'flex', 'align-items': 'center', 'margin-right': '50px'}),
+        ], style={'display': 'flex', 'align-items': 'center', 'margin-right': '50px', 'padding': '0px 25px'}),
 
         # Owner Name Dropdown
         html.Div([
@@ -198,6 +207,10 @@ app.layout = html.Div([
                     """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
 
                 ]),
+                # --- Offseason Trade Values tab ---
+                dcc.Tab(label='Offseason Trade Values', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
+
+                ]),
             ]),
         ]),
         # --- Top Level Tab: In-Season Tools ---
@@ -334,7 +347,6 @@ app.layout = html.Div([
         ]),
     ]),
 ])
-
 
 
 # --- Callbacks to Enable/Disable League-Specific Controls ---
