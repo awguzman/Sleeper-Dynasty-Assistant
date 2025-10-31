@@ -46,7 +46,7 @@ h1, h2, h3, h4, h5, h6 {
     background-color: #e0e0e0; /* Slightly darker than background for unselected tabs */
     color: #000000;
     border: 1px solid #cccccc;
-    padding: 10px 15px;
+    padding: 10px 10px;
     font-weight: 350;
 }
 
@@ -64,4 +64,10 @@ h1, h2, h3, h4, h5, h6 {
 /* --- Add spacing between top-level and nested tabs --- */
 .nested-tabs-container {
     margin-top: 10px;
+    padding: 0px 25px
+}
+
+/* --- Add top tab spacing --- */
+.top-tabs-container {
+    padding: 0px 25px
 }

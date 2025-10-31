@@ -4,7 +4,7 @@ import requests.exceptions
 from polars.testing import assert_frame_equal
 
 # Functions to test.
-from src.league_info import get_league_info, translate_owner_id, get_scoring_weights
+from src.league import get_league_info, translate_owner_id, get_scoring_weights
 
 
 # --- Test Data Fixtures ---

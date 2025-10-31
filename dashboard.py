@@ -13,8 +13,9 @@ import plotly.graph_objects as go
 
 # --- Import Helper Functions ---
 from src.boards import create_board
-from src.league_info import get_league_info
+from src.league import get_league_info
 from src.tiers import create_tiers
+from src.trade import create_trade_values
 from src.visualizations import create_tier_chart
 
 # --- Configure Cache ---
@@ -22,10 +23,10 @@ from pathlib import Path
 from nflreadpy.config import update_config
 
 cache_dir = Path(__file__).resolve().parent.parent / 'cache'
-update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True, cache_duration=900)
+update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True, cache_duration=3600)
 
-# Initialize the Dash application. The __name__ is for Dash to locate static assets.
-app = dash.Dash(__name__)
+# Initialize the Dash application. Suppress callback exceptions due to dynamic layout.
+app = dash.Dash(__name__, suppress_callback_exceptions=True)
 
 # Server variable
 server = app.server
@@ -35,7 +36,8 @@ server = app.server
 app.layout = html.Div([
     # --- Data Stores ---
     # These hidden components store the results of expensive computations (the full boards).
-    dcc.Store(id='draft-board-store'),
+    dcc.Store(id='draft-positional-board-store'),
+    dcc.Store(id='draft-overall-board-store'),
     dcc.Store(id='weekly-board-store'),
 
     # --- Header Section ---
@@ -77,7 +79,7 @@ app.layout = html.Div([
 
 
     # --- Main Tabbed Interface ---
-    dcc.Tabs(children=[
+    dcc.Tabs(className='top-tabs-container', children=[
         # --- Top Level Tab: Draft Tools ---
         dcc.Tab(label='Draft Tools', className='custom-top-tab', selected_className='custom-top-tab-selected', children=[
             # --- Nested Tabs for parent Draft Tools tab
@@ -93,12 +95,13 @@ app.layout = html.Div([
                             dcc.RadioItems(
                                 id='position-draft-selection',
                                 options=[
+                                    {'label': 'Overall', 'value': 'Overall'},
                                     {'label': 'Quarterback', 'value': 'QB'},
                                     {'label': 'Running Back', 'value': 'RB'},
                                     {'label': 'Wide Receiver', 'value': 'WR'},
                                     {'label': 'Tight End', 'value': 'TE'},
                                 ],
-                                value='QB',  # Default value
+                                value='Overall',  # Default value
                                 inline=True,  # Display options horizontally
                                 labelStyle={'margin-right': '20px'}  # Add space between radio items
                             ),
@@ -208,8 +211,75 @@ app.layout = html.Div([
 
                 ]),
                 # --- Offseason Trade Values tab ---
-                dcc.Tab(label='Offseason Trade Values', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
-
+                dcc.Tab(label='Dynasty Trade Values', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
+                    html.Br(),
+                    # Container for side-by-side tables
+                    html.Div(children=[
+                        # QB Table
+                        html.Div(children=[
+                            html.H4("Quarterback", style={'textAlignt': 'center'}),
+                            dcc.Loading(type='circle', children=dash_table.DataTable(
+                                id='trade-value-table-qb',
+                                style_table={'height': '600px', 'overflowY': 'auto'}, # Fix table height and add scroll bar.
+                                style_header={'fontWeight': 'bold'},
+                                style_cell={'textAlign': 'left', 'padding': '5px'},
+                                style_cell_conditional=[
+                                    {'if': {'column_id': 'Player'}, 'width': '50%'},
+                                    {'if': {'column_id': ['Age', 'Trade Value']}, 'width': '25%'}
+                                ]
+                            )),
+                        ], style={'flex': 1, 'padding': '0px 10px'}),
+                        # RB Table
+                        html.Div([
+                            html.H4("Running Back", style={'textAlignt': 'center'}),
+                            dcc.Loading(type='circle', children=dash_table.DataTable(
+                                id='trade-value-table-rb',
+                                style_table={'height': '600px', 'overflowY': 'auto'},
+                                # Fix table height and add scroll bar.
+                                style_header={'fontWeight': 'bold'},
+                                style_cell={'textAlign': 'left', 'padding': '5px'},
+                                style_cell_conditional=[
+                                    {'if': {'column_id': 'Player'}, 'width': '50%'},
+                                    {'if': {'column_id': ['Age', 'Trade Value']}, 'width': '25%'}
+                                ]
+                            )),
+                        ], style={'flex': 1, 'padding': '0px 10px'}),
+                        # WR Table
+                        html.Div([
+                            html.H4("Wide Receiver", style={'textAlignt': 'center'}),
+                            dcc.Loading(type='circle', children=dash_table.DataTable(
+                                id='trade-value-table-wr',
+                                style_table={'height': '600px', 'overflowY': 'auto'},
+                                # Fix table height and add scroll bar.
+                                style_header={'fontWeight': 'bold'},
+                                style_cell={'textAlign': 'left', 'padding': '5px'},
+                                style_cell_conditional=[
+                                    {'if': {'column_id': 'Player'}, 'width': '50%'},
+                                    {'if': {'column_id': ['Age', 'Trade Value']}, 'width': '25%'}
+                                ]
+                            )),
+                        ], style={'flex': 1, 'padding': '0px 10px'}),
+                        # TE Table
+                        html.Div([
+                            html.H4("Tight End", style={'textAlignt': 'center'}),
+                            dcc.Loading(type='circle', children=dash_table.DataTable(
+                                id='trade-value-table-te',
+                                style_table={'height': '600px', 'overflowY': 'auto'},
+                                # Fix table height and add scroll bar.
+                                style_header={'fontWeight': 'bold'},
+                                style_cell={'textAlign': 'left', 'padding': '5px'},
+                                style_cell_conditional=[
+                                    {'if': {'column_id': 'Player'}, 'width': '50%'},
+                                    {'if': {'column_id': ['Age', 'Trade Value']}, 'width': '25%'}
+                                ]
+                            )),
+                        ], style={'flex': 1, 'padding': '0px 10px'}),
+                    ], style={'display': 'flex', 'flexDirection': 'row'}),
+                html.Hr(),
+                dcc.Markdown("""
+                    Note: Trade values are based on overall dynasty ECR values. They will (possibly over)emphasize long term value
+                    over short-term gain.
+                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
                 ]),
             ]),
         ]),
@@ -380,7 +450,8 @@ def update_owner_dropdown(league_id):
 
 # --- Master Callback to Compute and Store Full Board Data ---
 @app.callback(
-    [Output('draft-board-store', 'data'),
+    [Output('draft-positional-board-store', 'data'),
+     Output('draft-overall-board-store', 'data'),
      Output('weekly-board-store', 'data')],
     [Input('league-id-input', 'value')],
     prevent_initial_call=False  # Ensure this runs on page load
@@ -388,17 +459,21 @@ def update_owner_dropdown(league_id):
 def update_board_stores(league_id):
     """
     This master callback runs the expensive computations once and stores the results.
-    It's triggered only when the league ID changes, signifying a new context.
+    It's triggered only when the league ID changes.
     """
-    # --- Create and store the full draft board (all positions) ---
-    draft_board_df = create_board(league_id=league_id, draft=True)
-    draft_data = draft_board_df.write_json()
+    # --- Create and store the full positional draft board ---
+    draft_positional_board_df = create_board(league_id=league_id, draft=True, positional=True)
+    draft_positional_data = draft_positional_board_df.write_json()
+
+    # --- Create and store the full overall draft board ---
+    draft_overall_board_df = create_board(league_id=league_id, draft=True, positional=False)
+    draft_overall_data = draft_overall_board_df.write_json()
 
     # --- Create and store the full weekly board (all positions) ---
     weekly_board_df = create_board(league_id=league_id, draft=False)
     weekly_data = weekly_board_df.write_json()
 
-    return draft_data, weekly_data
+    return draft_positional_data, draft_overall_data, weekly_data
 
 
 # --- Callback to Update Draft Board Table ---
@@ -411,13 +486,14 @@ def update_board_stores(league_id):
     ],
     [
         Input('owner-name-dropdown', 'value'),
-        Input('draft-board-store', 'data'),
+        Input('draft-positional-board-store', 'data'),
+        Input('draft-overall-board-store', 'data'),
         Input('position-draft-selection', 'value'),
         Input('show-taken-draft-checkbox', 'value')
     ],
     [State('league-id-input', 'value')]  # Get league_id without re-triggering
 )
-def update_draft_table(owner_name, draft_data, position, show_taken_value, league_id):
+def update_draft_table(owner_name, draft_positional_data, draft_overall_data, position, show_taken_value, league_id):
     """
     Updates the dynasty draft board table based on user selections.
 
@@ -425,14 +501,18 @@ def update_draft_table(owner_name, draft_data, position, show_taken_value, leagu
     and performs fast, in-memory filtering.
     """
     # Ensure all necessary inputs are provided before attempting to fetch data.
-    if not all([draft_data, position]):
+    if not all([draft_positional_data, draft_overall_data, position]):
         return [], [], "", []
 
-    # Load the full board from the store
-    board_df = pl.read_json(io.StringIO(draft_data))
+    if position == 'Overall':
+        # Load the full overall board from the store
+        board_df = pl.read_json(io.StringIO(draft_overall_data))
+    else:
+        # Load the full board from the store
+        board_df = pl.read_json(io.StringIO(draft_positional_data))
 
-    # Filter for the selected position
-    board_df = board_df.filter(pl.col('pos') == position)
+        # Filter for the selected position
+        board_df = board_df.filter(pl.col('pos') == position)
 
     # The checklist's value is a list. It's not empty if the box is checked.
     show_taken_flag = bool(show_taken_value)
@@ -553,7 +633,7 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value, leagu
 @app.callback(
     Output('draft-tier-chart-graph', 'figure'),
     [
-        Input('draft-board-store', 'data'),
+        Input('draft-positional-board-store', 'data'),
         Input('position-draft-tier-selection', 'value'),
     ]
 )
@@ -570,7 +650,7 @@ def update_draft_tier_chart(draft_data, position):
                   'WR': range(12, 14 + 1), 'TE': range(8, 10 + 1)}
 
     if not draft_data or not position:
-        return go.Figure()
+        return dash.no_update
 
     # Load and filter the main board data
     board_df = pl.read_json(io.StringIO(draft_data))
@@ -609,7 +689,7 @@ def update_weekly_tier_chart(weekly_data, position):
                   'WR': range(10, 12 + 1), 'TE': range(6, 8 + 1)}
 
     if not weekly_data or not position:
-        return go.Figure()
+        return dash.no_update
 
     # Load and filter the main board data
     board_df = pl.read_json(io.StringIO(weekly_data))
@@ -619,13 +699,75 @@ def update_weekly_tier_chart(weekly_data, position):
     tiered_df = create_tiers(
         position_df,
         tier_range=tier_range[position],
-        n_players=n_players[position]
-    )
+        n_players=n_players[position])
 
     # Generate the Plotly figure
     fig = create_tier_chart(tiered_df)
 
     return fig
+
+
+# --- Callback to Update Dynasty Trade Value Tables ---
+@app.callback(
+    [
+        Output('trade-value-table-qb', 'data'), Output('trade-value-table-qb', 'columns'),
+        Output('trade-value-table-rb', 'data'), Output('trade-value-table-rb', 'columns'),
+        Output('trade-value-table-wr', 'data'), Output('trade-value-table-wr', 'columns'),
+        Output('trade-value-table-te', 'data'), Output('trade-value-table-te', 'columns'),
+        Output('trade-value-table-qb', 'style_data_conditional'),
+        Output('trade-value-table-rb', 'style_data_conditional'),
+        Output('trade-value-table-wr', 'style_data_conditional'),
+        Output('trade-value-table-te', 'style_data_conditional')
+    ],
+    [
+        Input('draft-overall-board-store', 'data'),
+        Input('owner-name-dropdown', 'value') # Add owner name as an Input
+    ],
+    [State('league-id-input', 'value')]
+)
+def update_trade_value_tables(draft_data, owner_name, league_id):
+    """
+    Calculates trade values and populates the four positional tables.
+    """
+    if not draft_data:
+        # Return empty data for all 8 outputs if the store is empty + the 4 conditional styles
+        return [[] for _ in range(12)]
+
+    # Load the full board from the store
+    board_df = pl.read_json(io.StringIO(draft_data))
+
+    # Get trade values
+    values_df = create_trade_values(board_df, league_id, inseason=False)
+
+    # --- Generate Conditional Styling ---
+    styles = []
+    if league_id and owner_name:
+        styles.append({
+            'if': {'filter_query': '{Owner} = "' + owner_name + '"'},
+            'backgroundColor': 'rgba(0, 123, 255, 0.15)',
+        })
+
+    # Helper function to prepare data for positional tables
+    def prep_value_tables(pos: str):
+        pos_values_df = values_df.filter(pl.col('pos') == pos).sort('Trade Value', descending=True)
+
+        # Define the columns to display in the table
+        display_cols = ['Player', 'Age', 'Trade Value']
+        # Select the final columns for display
+        table_df = pos_values_df.select(display_cols)
+
+        columns = [{"name": i, "id": i} for i in table_df.columns]
+        # Pass the full data with the 'Owner' column (if it exists) for the filter_query to work
+        data = pos_values_df.to_dicts()
+        return data, columns
+
+    qb_data, qb_columns = prep_value_tables('QB')
+    rb_data, rb_columns = prep_value_tables('RB')
+    wr_data, wr_columns = prep_value_tables('WR')
+    te_data, te_columns = prep_value_tables('TE')
+
+    return qb_data, qb_columns, rb_data, rb_columns, wr_data, wr_columns, te_data, te_columns, styles, styles, styles, styles
+
 
 
 # --- Run the Application ---
