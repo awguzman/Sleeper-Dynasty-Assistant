@@ -26,6 +26,7 @@ def get_league_info(league_id: str) -> pl.DataFrame:
     Returns:
         pl.DataFrame: A DataFrame with one row per owner, containing their ID,
                       name, and lists of their players' IDs and names.
+        NOTE: Both ID values are returns as ints! For some reason, nflreadpy does not standardize the types of these ID's.
     """
     sleeper_url = f'https://api.sleeper.app/v1/league/{league_id}/rosters'
     league_columns = ['owner_id', 'players', 'reserve']
@@ -42,11 +43,11 @@ def get_league_info(league_id: str) -> pl.DataFrame:
 
     # Combine active players and reserve players into a single list of sleeper_ids.
     league_df = league_df.with_columns((pl.col('players').list.concat(pl.col('reserve'))).alias('sleeper_ids'))
+    league_df = league_df.cast({'sleeper_ids': pl.List(pl.Int64())}) # Cast as Int to match types used by nflreadpy.
     league_df = league_df.drop(['players', 'reserve'])
 
     # Load required player ID data from nflreadpy and create a lookup dictionary
-    id_map_df = load_ff_playerids()[['sleeper_id', 'fantasypros_id']]
-    id_map_df = id_map_df.cast({'sleeper_id': pl.String(), 'fantasypros_id': pl.String()})
+    id_map_df = load_ff_playerids().select(['sleeper_id', 'fantasypros_id'])
     id_lookup = dict(zip(id_map_df['sleeper_id'].to_list(),
                          id_map_df['fantasypros_id'].to_list()
                 ))
@@ -69,7 +70,7 @@ def get_league_info(league_id: str) -> pl.DataFrame:
         return fantasypros_ids
 
     league_df = league_df.with_columns(
-        pl.col('sleeper_ids').map_elements(map_ids, return_dtype=pl.List(pl.String)).alias('fantasypros_ids')
+        pl.col('sleeper_ids').map_elements(map_ids, return_dtype=pl.List(pl.Int64())).alias('fantasypros_ids')
     )
 
     # Merge with owner data to add a readable 'owner_name' column.
@@ -98,6 +99,7 @@ def translate_owner_id(league_id: str) -> pl.DataFrame:
     owners_data = response.json()
     if not owners_data:
         raise ValueError(f'League ID {league_id} does not return any league data from Sleeper.')
+
     owner_df = pl.DataFrame(owners_data)[['user_id', 'display_name']]
     owner_df = owner_df.rename({'user_id': 'owner_id', 'display_name': 'owner_name'})
 
@@ -133,6 +135,4 @@ if __name__ == '__main__':
 
     league_id = input('Enter Sleeper platform league number (This is found in the sleeper url):')
     league_df = get_league_info(league_id)
-    scoring_weights = get_scoring_weights(league_id)
     print(league_df)
-    print(scoring_weights)

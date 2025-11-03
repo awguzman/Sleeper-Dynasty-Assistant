@@ -165,7 +165,7 @@ def test_get_league_info_success(mocker, mock_sleeper_rosters_response, mock_sle
     # 2. The call to get player IDs
     # 3. The call to get users (inside translate_owner_id)
     mocker.patch('requests.get').side_effect = [mock_sleeper_rosters_response, mock_sleeper_users_response]
-    mocker.patch('src.league_info.load_ff_playerids', return_value=mock_ff_playerids)
+    mocker.patch('src.league.load_ff_playerids', return_value=mock_ff_playerids)
 
     # Act
     result_df = get_league_info("dummy_league_id")

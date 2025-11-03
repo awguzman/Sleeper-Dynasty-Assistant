@@ -12,7 +12,7 @@ from src.league import get_league_info
 from nflreadpy import load_ff_rankings, load_ff_playerids
 
 
-def create_board(league_id: int | None, draft: bool, positional = bool) -> pl.DataFrame:
+def create_board(league_id: str | None, draft: bool, positional = bool) -> pl.DataFrame:
     """
     Creates a full player ranking board for all positions.
 
@@ -22,7 +22,7 @@ def create_board(league_id: int | None, draft: bool, positional = bool) -> pl.Da
     3. A weekly projections board with in-season weekly ECR and projections.
 
     Args:
-        league_id (int, optional): The Sleeper league ID for ownership information. If None, no owners are added.
+        league_id (str, optional): The Sleeper league ID for ownership information. If None, no owners are added.
         draft (bool): If True, creates a dynasty draft board.
                       If False, creates a weekly projections board.
         positional (bool): If True, creates a dynasty positional ranking board.
@@ -92,9 +92,6 @@ def create_board(league_id: int | None, draft: bool, positional = bool) -> pl.Da
             'r2p_pts': 'Proj. Points'
         })
 
-    # Cast ID column as a string to ensure consistent filtering with other data sources, like league rosters.
-    board_df = board_df.cast({'fantasypros_id': pl.Int64()})
-
     # Add league ownership data
     if league_id:
         board_df = add_owners(league_id, board_df)
@@ -146,7 +143,6 @@ def add_owners(league_id: str, board_df: pl.DataFrame) -> pl.DataFrame:
     # Create a mapping from fantasypros_ids to owner_name.
     owner_map = league_df.select(['owner_name', 'fantasypros_ids']).explode('fantasypros_ids')
     owner_map = owner_map.rename({'owner_name': 'Owner', 'fantasypros_ids': 'fantasypros_id'})
-    owner_map = owner_map.cast({'fantasypros_id': pl.Int64()})
 
     # Join owner_map to the player board and fill null values.
     board_df = board_df.join(owner_map, on='fantasypros_id', how='left')

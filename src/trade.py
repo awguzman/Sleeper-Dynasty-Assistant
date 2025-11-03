@@ -38,9 +38,6 @@ def create_trade_values(board_df: pl.DataFrame, league_id: str | None, inseason:
     board_df = add_ages(board_df)
     board_df = board_df.select(['fantasypros_id', 'Player', 'pos', 'Age', 'ECR'])
 
-    # Cast ID column as a string to ensure consistent filtering with other data sources, like league rosters.
-    board_df = board_df.cast({'fantasypros_id': pl.Int64()})
-
     # Add league ownership data
     if league_id:
         board_df = add_owners(league_id, board_df)
@@ -79,7 +76,7 @@ def add_trade_values(board_df: pl.DataFrame) -> pl.DataFrame:
     # Normalize raw trade values to a 1-9999 scale
     max_exp_val = values_df['exp_val'].max()
     values_df = values_df.with_columns((pl.col('exp_val') / max_exp_val * 9999).round(0).alias('Trade Value'))
-    values_df = values_df.cast({'Trade Value': pl.Int32})
+    values_df = values_df.cast({'Trade Value': pl.Int64})
 
     return values_df.select(['fantasypros_id', 'Player', 'pos', 'Age', 'Trade Value', 'Owner'])
 
