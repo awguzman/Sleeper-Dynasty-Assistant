@@ -2,7 +2,7 @@
 
 An interactive web dashboard for your Sleeper-based dynasty and in-season fantasy football leagues. This application 
 fetches live data from [nflreadpy](https://github.com/nflverse/nflreadpy) and integrates it with your specific league's 
-rosters (via Sleeper.com API).
+rosters via [Sleeper.com API](https://docs.sleeper.com/).
 
 You can test out an online version of the application via the link: https://sleeper-dynasty-assistant.onrender.com
 
@@ -20,7 +20,8 @@ The dashboard is organized into two main sections: **Draft Tools** and **In-Seas
 
 ### Draft Tools
 - **Dynasty Draft Board**: A sortable and filterable table showing dynasty rankings (ECR), player age, and ownership status.
-- **Draft Tiers Visualization**: An interactive chart that groups players into statistically-derived tiers based on their ECR, Best, and Worst ranks. This helps identify value drop-offs at each position.
+- **Draft Tiers Visualization**: An interactive chart that groups players into statistically distinct tiers based on their ECR, Best, and Worst ranks. This helps identify value drop-offs at each position.
+- **Dynasty Trade Values**: Side-by-side, scrollable tables displaying player trade values for each position.
 
 ### In-Season Tools
 - **Weekly Projections**: A table displaying weekly positional rankings, ECR, and start/sit grades to help with lineup decisions.
@@ -30,7 +31,7 @@ The dashboard is organized into two main sections: **Draft Tools** and **In-Seas
 
 - **Dashboard & Visualizations**: Dash, Plotly
 - **Data Manipulation**: Polars
-- **Data Source**: nflreadpy (for FantasyPros data), Sleeper API
+- **Data Source**: nflreadpy, Sleeper API
 - **Machine Learning**: scikit-learn
 
 ## Setup and Local Installation
@@ -78,7 +79,6 @@ To run the dashboard on your local machine, follow these steps.
 
 This is a living project with many planned features including:
 
-- **Trade Values**: A new tab allowing users to see player trade values.
-- **League View**: A "bird's-eye view" tab that displays all team rosters in the league side-by-side.
+- **League View**: A "bird's-eye view" tab that displays all team rosters in the league side-by-side with strength analysis.
 - **Touchdown Regression**: Use historical data to predict touchdown regression candidacy in the following season.
 - **In-house Projections** Use historical data to produce custom scoring projections.
