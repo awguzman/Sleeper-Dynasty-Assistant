@@ -105,7 +105,7 @@ app.layout = html.Div([
                                 inline=True,  # Display options horizontally
                                 labelStyle={'margin-right': '20px'}  # Add space between radio items
                             ),
-                        ], style={'display': 'flex', 'align-items': 'center'}),
+                        ], style={'display': 'flex', 'align-items': 'center', 'padding': '0px 25px'}),
 
                         # Show taken players checkbox
                         dcc.Checklist(
@@ -113,7 +113,7 @@ app.layout = html.Div([
                             options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
                             value=[],  # Default to unchecked
                         ),
-                    ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
+                    ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between', 'padding': '0px 25px'}),
                     html.Br(),
 
                     # Draft board table
@@ -159,12 +159,11 @@ app.layout = html.Div([
                     # Bottom text box
                     html.Hr(),
                     dcc.Markdown("""
-                    Note: "Last Update" refers to the last update of data provided by FantasyPros. This application has no 
-                    control over the frequency of such updates.
+                    Note: This table does not take into consideration in-season performance. It should be considered 
+                    outdated following the first week of play.
                 
                     *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
-                    *   **Best**: Most optimistic (lowest) ranking given to a player by any one expert.
-                    *   **Worst**: Most pessimistic (highest) ranking given to a player by any one expert.
+                    *   **Best/Worst**: Most optimistic (lowest)/pessimistic (highest) ranking given to a player by any one expert.
                     *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
                 
                     """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
@@ -188,7 +187,7 @@ app.layout = html.Div([
                                 inline=True,
                                 labelStyle={'margin-right': '20px'}
                             ),
-                        ], style={'display': 'flex', 'align-items': 'center'}),
+                        ], style={'display': 'flex', 'align-items': 'center', 'padding': '0px 25px'}),
                     ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
                     html.Br(),
 
@@ -202,11 +201,14 @@ app.layout = html.Div([
                     # Bottom text box
                     html.Hr(),
                     dcc.Markdown("""
-                    Note: Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
+                    Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
                     cluster players into statistically similar tiers. This should be viewed as a measure of how similar any two 
                     players are ranked by FantasyPros.
                 
                     Inspired by analysis of Boris Chen, see www.borischen.co
+                    
+                    Note: This does not take into consideration in-season performance. It should be considered 
+                    outdated following the first week of play.
                     """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
 
                 ]),
@@ -217,7 +219,7 @@ app.layout = html.Div([
                     html.Div(children=[
                         # QB Table
                         html.Div(children=[
-                            html.H4("Quarterback", style={'textAlignt': 'center'}),
+                            html.H4("Quarterback", style={'textAlign': 'center'}),
                             dcc.Loading(type='circle', children=dash_table.DataTable(
                                 id='trade-value-table-qb',
                                 style_table={'height': '600px', 'overflowY': 'auto'}, # Fix table height and add scroll bar.
@@ -225,13 +227,13 @@ app.layout = html.Div([
                                 style_cell={'textAlign': 'left', 'padding': '5px'},
                                 style_cell_conditional=[
                                     {'if': {'column_id': 'Player'}, 'width': '50%'},
-                                    {'if': {'column_id': ['Age', 'Trade Value']}, 'width': '25%'}
+                                    {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
                                 ]
                             )),
                         ], style={'flex': 1, 'padding': '0px 10px'}),
                         # RB Table
                         html.Div([
-                            html.H4("Running Back", style={'textAlignt': 'center'}),
+                            html.H4("Running Back", style={'textAlign': 'center'}),
                             dcc.Loading(type='circle', children=dash_table.DataTable(
                                 id='trade-value-table-rb',
                                 style_table={'height': '600px', 'overflowY': 'auto'},
@@ -240,13 +242,13 @@ app.layout = html.Div([
                                 style_cell={'textAlign': 'left', 'padding': '5px'},
                                 style_cell_conditional=[
                                     {'if': {'column_id': 'Player'}, 'width': '50%'},
-                                    {'if': {'column_id': ['Age', 'Trade Value']}, 'width': '25%'}
+                                    {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
                                 ]
                             )),
                         ], style={'flex': 1, 'padding': '0px 10px'}),
                         # WR Table
                         html.Div([
-                            html.H4("Wide Receiver", style={'textAlignt': 'center'}),
+                            html.H4("Wide Receiver", style={'textAlign': 'center'}),
                             dcc.Loading(type='circle', children=dash_table.DataTable(
                                 id='trade-value-table-wr',
                                 style_table={'height': '600px', 'overflowY': 'auto'},
@@ -255,13 +257,13 @@ app.layout = html.Div([
                                 style_cell={'textAlign': 'left', 'padding': '5px'},
                                 style_cell_conditional=[
                                     {'if': {'column_id': 'Player'}, 'width': '50%'},
-                                    {'if': {'column_id': ['Age', 'Trade Value']}, 'width': '25%'}
+                                    {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
                                 ]
                             )),
                         ], style={'flex': 1, 'padding': '0px 10px'}),
                         # TE Table
                         html.Div([
-                            html.H4("Tight End", style={'textAlignt': 'center'}),
+                            html.H4("Tight End", style={'textAlign': 'center'}),
                             dcc.Loading(type='circle', children=dash_table.DataTable(
                                 id='trade-value-table-te',
                                 style_table={'height': '600px', 'overflowY': 'auto'},
@@ -270,15 +272,18 @@ app.layout = html.Div([
                                 style_cell={'textAlign': 'left', 'padding': '5px'},
                                 style_cell_conditional=[
                                     {'if': {'column_id': 'Player'}, 'width': '50%'},
-                                    {'if': {'column_id': ['Age', 'Trade Value']}, 'width': '25%'}
+                                    {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
                                 ]
                             )),
                         ], style={'flex': 1, 'padding': '0px 10px'}),
-                    ], style={'display': 'flex', 'flexDirection': 'row'}),
+                    ], style={'display': 'flex', 'flexDirection': 'row', 'padding': '0px 25px'}),
                 html.Hr(),
                 dcc.Markdown("""
-                    Note: Trade values are based on overall dynasty ECR values. They will (possibly over)emphasize long term value
+                    Trade values are based on overall dynasty ECR values. They will (possibly over)emphasize long term value
                     over short-term gain.
+                    
+                    Note: This does not take into consideration in-season performance. It should be considered 
+                    outdated following the first week of play.
                     """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
                 ]),
             ]),
@@ -306,7 +311,7 @@ app.layout = html.Div([
                                 inline=True,  # Display options horizontally
                                 labelStyle={'margin-right': '20px'}  # Add space between radio items
                             ),
-                        ], style={'display': 'flex', 'align-items': 'center'}),
+                        ], style={'display': 'flex', 'align-items': 'center', 'padding': '0px 25px'}),
 
                         # Show taken players checkbox
                         dcc.Checklist(
@@ -314,7 +319,7 @@ app.layout = html.Div([
                             options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
                             value=[],  # Default to unchecked
                         ),
-                    ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
+                    ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between', 'padding': '0px 25px'}),
 
                     html.Br(),
 
@@ -391,7 +396,7 @@ app.layout = html.Div([
                                 inline=True,
                                 labelStyle={'margin-right': '20px'}
                             ),
-                        ], style={'display': 'flex', 'align-items': 'center'}),
+                        ], style={'display': 'flex', 'align-items': 'center', 'padding': '0px 25px'}),
                     ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
                     html.Br(),
 
@@ -405,7 +410,7 @@ app.layout = html.Div([
                     # Bottom text box
                     html.Hr(),
                     dcc.Markdown("""
-                    Note: Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
+                    Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
                     cluster players into statistically similar tiers. This should be viewed as a measure of how similar any two 
                     players are ranked by FantasyPros.
                 
@@ -721,7 +726,7 @@ def update_weekly_tier_chart(weekly_data, position):
     ],
     [
         Input('draft-overall-board-store', 'data'),
-        Input('owner-name-dropdown', 'value') # Add owner name as an Input
+        Input('owner-name-dropdown', 'value')
     ],
     [State('league-id-input', 'value')]
 )
@@ -749,10 +754,10 @@ def update_trade_value_tables(draft_data, owner_name, league_id):
 
     # Helper function to prepare data for positional tables
     def prep_value_tables(pos: str):
-        pos_values_df = values_df.filter(pl.col('pos') == pos).sort('Trade Value', descending=True)
+        pos_values_df = values_df.filter(pl.col('pos') == pos).sort('Value', descending=True)
 
         # Define the columns to display in the table
-        display_cols = ['Player', 'Age', 'Trade Value']
+        display_cols = ['Player', 'Age', 'Value']
         # Select the final columns for display
         table_df = pos_values_df.select(display_cols)
 
@@ -767,7 +772,6 @@ def update_trade_value_tables(draft_data, owner_name, league_id):
     te_data, te_columns = prep_value_tables('TE')
 
     return qb_data, qb_columns, rb_data, rb_columns, wr_data, wr_columns, te_data, te_columns, styles, styles, styles, styles
-
 
 
 # --- Run the Application ---
