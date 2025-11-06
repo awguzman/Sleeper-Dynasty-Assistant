@@ -52,7 +52,7 @@ app.layout = html.Div([
     ], style={'display': 'flex', 'justifyContent': 'space-between', 'alignItems': 'center', 'padding': '0px 25px'}),
 
     # --- Global Controls ---
-    # These inputs for league and owner are placed outside the tabs to be persistant
+    # These inputs for league and owner are placed outside the tabs to be persistent
     html.Div(children=[
         # League ID Input
         html.Div([
@@ -640,9 +640,10 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value, leagu
     [
         Input('draft-positional-board-store', 'data'),
         Input('position-draft-tier-selection', 'value'),
+        Input('owner-name-dropdown', 'value') # Add owner name as an Input
     ]
 )
-def update_draft_tier_chart(draft_data, position):
+def update_draft_tier_chart(draft_data, position, owner_name):
     """
     Generates and displays the player tier visualization.
 
@@ -669,7 +670,7 @@ def update_draft_tier_chart(draft_data, position):
     )
 
     # Generate the Plotly figure
-    fig = create_tier_chart(tiered_df)
+    fig = create_tier_chart(tiered_df, user_name=owner_name)
 
     return fig
 
@@ -680,9 +681,10 @@ def update_draft_tier_chart(draft_data, position):
     [
         Input('weekly-board-store', 'data'),
         Input('position-weekly-tier-selection', 'value'),
+        Input('owner-name-dropdown', 'value')
     ]
 )
-def update_weekly_tier_chart(weekly_data, position):
+def update_weekly_tier_chart(weekly_data, position, owner_name):
     """
     Generates and displays the player tier visualization.
 
@@ -707,7 +709,7 @@ def update_weekly_tier_chart(weekly_data, position):
         n_players=n_players[position])
 
     # Generate the Plotly figure
-    fig = create_tier_chart(tiered_df)
+    fig = create_tier_chart(tiered_df, user_name=owner_name)
 
     return fig
 

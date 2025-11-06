@@ -7,13 +7,14 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 
-def create_tier_chart(board_df: pl.DataFrame) -> go.Figure:
+def create_tier_chart(board_df: pl.DataFrame, user_name: str | None) -> go.Figure:
     """
     Creates an interactive tier chart showing player ECR with best/worst error bars.
 
     Args:
         board_df (pl.DataFrame): A DataFrame containing player data with tiers,
                                  ECR, Best, and Worst columns.
+        user_name (str, Optional): Username for conditional styling of owned players.
 
     Returns:
         go.Figure: A Plotly figure object ready to be displayed in a dcc.Graph.
@@ -69,12 +70,12 @@ def create_tier_chart(board_df: pl.DataFrame) -> go.Figure:
     # Create a mapping from tier name to its assigned color from the figure's traces
     tier_color_map = {trace.name: trace.marker.color for trace in fig.data}
 
-    # Add player names as annotations to the right of the 'Worst' ECR value
+    # Add player names as annotations to the right of the 'Worst' ECR value and stylize owned players.
     for i, row in enumerate(board_df.iter_rows(named=True)):
         fig.add_annotation(
             x=row['Worst'],  # Position text at the end of the error bar
             y=row['Rank'],
-            text=row['Player'],
+            text = f"<b>{row['Player']}</b>" if user_name and row['Owner'] == user_name and row['Owner'] == user_name else row['Player'],
             showarrow=False,
             xanchor='left',  # Anchor text to the left
             xshift=5,        # Add a small 5px shift for padding
@@ -102,6 +103,7 @@ if __name__ == '__main__':
 
     from src.boards import create_board
     from src.tiers import create_tiers
-    board_df = create_board(league_id=None, draft=False).filter(pl.col('pos') == 'QB')
+    league_id = input('Enter Sleeper platform league number (This is found in the sleeper url):')
+    board_df = create_board(league_id, draft=False).filter(pl.col('pos') == 'QB')
     board_df = create_tiers(board_df, tier_range=range(10,12+1), n_players=60)
     print(create_tier_chart(board_df).show())

@@ -64,7 +64,7 @@ def create_tiers(board_df: pl.DataFrame, tier_range: range, n_players: int) -> p
     board_df = board_df.with_columns(pl.col('Tier').replace(tier_map))
 
     # Return a final DataFrame with a clean selection of columns for display.
-    return board_df.select(['Player', 'ECR', 'Best', 'Worst', 'Std', 'Tier', 'Confidence'])
+    return board_df.select(['Player', 'ECR', 'Best', 'Worst', 'Std', 'Tier', 'Confidence', 'Owner'])
 
 if __name__ == '__main__':
     pl.Config(tbl_rows=-1, tbl_cols=-1)
