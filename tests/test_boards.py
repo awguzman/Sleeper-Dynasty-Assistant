@@ -66,22 +66,33 @@ def mock_league_info_for_owners():
         ]
     })
 
+@pytest.fixture
+def mock_league_info_for_owners_gsis():
+    """A mock Polars DataFrame from get_league_info with gsis_ids for testing."""
+    return pl.DataFrame({
+        "owner_name": ["User One", "User Two"],
+        "gsis_ids": [
+            ['00-0033873', '00-0035228'],
+            ['00-0036355']
+        ]
+    })
+
 
 # --- Unit Tests for add_ages ---
 
 def test_add_ages(mocker, mock_player_ids_with_age):
     """Tests that add_ages correctly joins and adds the 'Age' column."""
-    # Arrange
+
     mocker.patch('src.boards.load_ff_playerids', return_value=mock_player_ids_with_age)
     input_df = pl.DataFrame(
         {'fantasypros_id': [1, 2, 99]}, # Player 99 has no age in the mock data
         schema={'fantasypros_id': pl.Int64}
     )
 
-    # Act
+
     result_df = add_ages(input_df)
 
-    # Assert
+
     expected_df = pl.DataFrame(
         {'fantasypros_id': [1, 2, 99], 'Age': [24, 28, None]},
         schema={'fantasypros_id': pl.Int64, 'Age': pl.Int64}
@@ -93,20 +104,40 @@ def test_add_ages(mocker, mock_player_ids_with_age):
 
 def test_add_owners(mocker, mock_league_info_for_owners):
     """Tests that add_owners correctly joins owner names and fills nulls for free agents."""
-    # Arrange
+
     mocker.patch('src.boards.get_league_info', return_value=mock_league_info_for_owners)
     input_df = pl.DataFrame(
         {'fantasypros_id': [1, 2, 99]}, # Player 99 is a free agent
         schema={'fantasypros_id': pl.Int64}
     )
 
-    # Act
+
     result_df = add_owners('dummy_league_id', input_df)
 
-    # Assert
+
     expected_df = pl.DataFrame(
         {'fantasypros_id': [1, 2, 99], 'Owner': ['User One', 'User Two', 'Free Agent']},
         schema={'fantasypros_id': pl.Int64, 'Owner': pl.String}
+    )
+    assert_frame_equal(result_df, expected_df)
+
+def test_add_owners_with_gsis_id(mocker, mock_league_info_for_owners_gsis):
+    """Tests that add_owners correctly joins on gsis_id when fantasypros_id is not present."""
+    # Arrange
+    mocker.patch('src.boards.get_league_info', return_value=mock_league_info_for_owners_gsis)
+    input_df = pl.DataFrame(
+        {'gsis_id': ['00-0033873', '00-0036355', '00-999999']}, # Last player is a free agent
+        schema={'gsis_id': pl.String}
+    )
+
+
+    result_df = add_owners('dummy_league_id', input_df)
+
+
+    expected_df = pl.DataFrame(
+        {'gsis_id': ['00-0033873', '00-0036355', '00-999999'],
+         'Owner': ['User One', 'User Two', 'Free Agent']},
+        schema={'gsis_id': pl.String, 'Owner': pl.String}
     )
     assert_frame_equal(result_df, expected_df)
 
@@ -115,15 +146,15 @@ def test_add_owners(mocker, mock_league_info_for_owners):
 
 def test_create_board_draft_positional_with_league(mocker, mock_draft_rankings, mock_player_ids_with_age, mock_league_info_for_owners):
     """Tests create_board for a positional draft board with a league_id provided."""
-    # Arrange
+
     mocker.patch('src.boards.load_ff_rankings', return_value=mock_draft_rankings)
     mocker.patch('src.boards.load_ff_playerids', return_value=mock_player_ids_with_age)
     mocker.patch('src.boards.get_league_info', return_value=mock_league_info_for_owners)
 
-    # Act
+
     result_df = create_board(league_id='dummy_id', draft=True, positional=True)
 
-    # Assert
+
     # It should filter for 'dp' players (1, 2, 5), add their ages and owners.
     assert result_df.shape[0] == 3
     assert 'Age' in result_df.columns
@@ -136,14 +167,14 @@ def test_create_board_draft_positional_with_league(mocker, mock_draft_rankings, 
 
 def test_create_board_draft_overall_no_league(mocker, mock_draft_rankings, mock_player_ids_with_age):
     """Tests create_board for an overall draft board without a league_id."""
-    # Arrange
+
     mocker.patch('src.boards.load_ff_rankings', return_value=mock_draft_rankings)
     mocker.patch('src.boards.load_ff_playerids', return_value=mock_player_ids_with_age)
 
-    # Act
+
     result_df = create_board(league_id=None, draft=True, positional=False)
 
-    # Assert
+
     # It should filter for 'do' players (3, 4) and add a placeholder 'N/A' for Owner.
     assert result_df.shape[0] == 2
     assert 'Age' in result_df.columns
@@ -156,14 +187,14 @@ def test_create_board_draft_overall_no_league(mocker, mock_draft_rankings, mock_
 
 def test_create_board_weekly(mocker, mock_weekly_rankings, mock_league_info_for_owners):
     """Tests create_board for a weekly board with a league_id provided."""
-    # Arrange
+
     mocker.patch('src.boards.load_ff_rankings', return_value=mock_weekly_rankings)
     mocker.patch('src.boards.get_league_info', return_value=mock_league_info_for_owners)
 
-    # Act
+
     result_df = create_board(league_id='dummy_id', draft=False, positional=True) # positional is ignored for weekly
 
-    # Assert
+
     # It should not add ages, but it should add owners.
     assert result_df.shape[0] == 5
     assert 'Age' not in result_df.columns
@@ -176,13 +207,13 @@ def test_create_board_weekly(mocker, mock_weekly_rankings, mock_league_info_for_
 
 def test_create_board_handles_empty_data(mocker):
     """Tests that create_board returns an empty DataFrame if the initial load fails."""
-    # Arrange
+
     mocker.patch('src.boards.load_ff_rankings', return_value=pl.DataFrame())
 
-    # Act
+
     result_df_draft = create_board(league_id=None, draft=True, positional=True)
     result_df_weekly = create_board(league_id=None, draft=False, positional=True)
 
-    # Assert
+
     assert result_df_draft.is_empty()
     assert result_df_weekly.is_empty()

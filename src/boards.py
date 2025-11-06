@@ -140,12 +140,23 @@ def add_owners(league_id: str, board_df: pl.DataFrame) -> pl.DataFrame:
     # Get league roster data
     league_df = get_league_info(league_id)
 
-    # Create a mapping from fantasypros_ids to owner_name.
-    owner_map = league_df.select(['owner_name', 'fantasypros_ids']).explode('fantasypros_ids')
-    owner_map = owner_map.rename({'owner_name': 'Owner', 'fantasypros_ids': 'fantasypros_id'})
+    if 'fantasypros_id' in board_df.columns:
+        # Create a mapping from fantasypros_ids to owner_name.
+        owner_map = league_df.select(['owner_name', 'fantasypros_ids']).explode('fantasypros_ids')
+        owner_map = owner_map.rename({'owner_name': 'Owner', 'fantasypros_ids': 'fantasypros_id'})
 
-    # Join owner_map to the player board and fill null values.
-    board_df = board_df.join(owner_map, on='fantasypros_id', how='left')
+        # Join owner_map to the player board.
+        board_df = board_df.join(owner_map, on='fantasypros_id', how='left')
+
+    elif 'gsis_id' in board_df.columns:
+        # Create a mapping from gsis_ids to owner_name.
+        owner_map = league_df.select(['owner_name', 'gsis_ids']).explode('gsis_ids')
+        owner_map = owner_map.rename({'owner_name': 'Owner', 'gsis_ids': 'gsis_id'})
+
+        # Join owner_map to the player board.
+        board_df = board_df.join(owner_map, on='gsis_id', how='left')
+
+    # Fill in null values.
     board_df = board_df.with_columns(pl.col('Owner').fill_null('Free Agent'))
 
     return board_df
