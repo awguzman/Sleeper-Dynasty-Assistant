@@ -86,10 +86,13 @@ def mock_api_error_response():
 @pytest.fixture
 def mock_ff_playerids():
     """A mock DataFrame from nflreadpy.load_ff_playerids."""
-    return pl.DataFrame({
-        "sleeper_id": ["1049", "4034", "515", "223", "7523"],
-        "fantasypros_id": ["9001", "9002", "9003", "9004", "9005"]
-    })
+    # Ensure fantasypros_id is Int64 to match the schema defined in get_league_info
+    return pl.DataFrame(
+        {"sleeper_id": [1049, 4034, 515, 223, 7523],
+         "fantasypros_id": [9001, 9002, 9003, 9004, 9005],
+         "gsis_id": ['00-1', '00-2', '00-3', '00-4', '00-5']},
+        schema={"sleeper_id": pl.Int64, "fantasypros_id": pl.Int64, "gsis_id": pl.String}
+    )
 
 
 # --- Unit Tests ---
@@ -160,31 +163,38 @@ def test_get_league_info_success(mocker, mock_sleeper_rosters_response, mock_sle
     Tests the main get_league_info function on a successful run.
     This test mocks all external dependencies.
     """
-    # Arrange: We need to mock multiple calls
+    # We need to mock multiple calls
     # 1. The call to get rosters
     # 2. The call to get player IDs
     # 3. The call to get users (inside translate_owner_id)
     mocker.patch('requests.get').side_effect = [mock_sleeper_rosters_response, mock_sleeper_users_response]
     mocker.patch('src.league.load_ff_playerids', return_value=mock_ff_playerids)
 
-    # Act
     result_df = get_league_info("dummy_league_id")
 
-    # Assert
     # Check that the 'sleeper_ids' list was combined correctly
     owner_123_roster = result_df.filter(pl.col('owner_id') == '123')['sleeper_ids'][0]
-    assert set(owner_123_roster) == {'1049', '4034', '223', '7523'}
+    assert set(owner_123_roster) == {1049, 4034, 223, 7523}
 
     # Check that the 'fantasypros_ids' were mapped correctly
     owner_123_fp_ids = result_df.filter(pl.col('owner_id') == '123')['fantasypros_ids'][0]
-    assert set(owner_123_fp_ids) == {'9001', '9002', '9004', '9005'}
+    assert set(owner_123_fp_ids) == {9001, 9002, 9004, 9005}
+
+    # Check that the 'gsis_ids' were mapped correctly
+    owner_123_gsis_ids = result_df.filter(pl.col('owner_id') == '123')['gsis_ids'][0]
+    assert set(owner_123_gsis_ids) == {'00-1', '00-2', '00-4', '00-5'}
 
     # Check the final DataFrame
-    expected_df = pl.DataFrame({"owner_id": ["123", "456"],
-                                "owner_name": ["UserOne", "UserTwo"],
-                                "sleeper_ids": [['1049', '4034', '223', '7523'], ['515']],
-                                "fantasypros_ids": [['9001', '9002', '9004', '9005'], ['9003']]
-                                })
+    expected_df = pl.DataFrame(
+        {
+            "owner_id": ["123", "456"],
+            "owner_name": ["UserOne", "UserTwo"],
+            "sleeper_ids": [[1049, 4034, 223, 7523], [515]],
+            "fantasypros_ids": [[9001, 9002, 9004, 9005], [9003]],
+            "gsis_ids": [['00-1', '00-2', '00-4', '00-5'], ['00-3']]
+        },
+        schema_overrides={"sleeper_ids": pl.List(pl.Int64), "fantasypros_ids": pl.List(pl.Int64)}
+    )
     assert_frame_equal(result_df, expected_df)
 
 def test_get_league_info_api_error(mocker, mock_api_error_response):
