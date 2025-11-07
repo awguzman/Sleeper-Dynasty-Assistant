@@ -93,11 +93,7 @@ def create_board(league_id: str | None, draft: bool, positional = bool) -> pl.Da
         })
 
     # Add league ownership data
-    if league_id:
-        board_df = add_owners(league_id, board_df)
-    else:
-        # If no league_id, add placeholder Owner column.
-        board_df = board_df.with_columns(pl.lit('N/A').alias('Owner'))
+    board_df = add_owners(league_id, board_df)
 
     # Drop duplicate players generated from add_owners join
     board_df = board_df.unique(subset=['fantasypros_id'], maintain_order=True)
@@ -126,7 +122,7 @@ def add_ages(board_df: pl.DataFrame) -> pl.DataFrame:
 
     return board_df
 
-def add_owners(league_id: str, board_df: pl.DataFrame) -> pl.DataFrame:
+def add_owners(league_id: str | None, board_df: pl.DataFrame) -> pl.DataFrame:
     """
     Adds an "Owner" column based on league roster data to the player board.
 
@@ -137,6 +133,12 @@ def add_owners(league_id: str, board_df: pl.DataFrame) -> pl.DataFrame:
     Returns:
         pl.DataFrame: The board with an 'Owner' column added.
     """
+
+    if not league_id:
+        # If no league_id, add placeholder Owner column.
+        board_df = board_df.with_columns(pl.lit('N/A').alias('Owner'))
+        return board_df
+
     # Get league roster data
     league_df = get_league_info(league_id)
 
