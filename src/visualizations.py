@@ -38,12 +38,10 @@ def create_tier_chart(board_df: pl.DataFrame, user_name: str | None) -> go.Figur
         (pl.col('ECR') - pl.col('Best')).alias('error_minus')
     ])
 
-    # Prepend "Tier: " to the Tier column for a more descriptive legend.
-    # Casting to string also ensures Plotly uses a discrete (not gradient) color scale.
+    # Casting to string also ensures Plotly uses a discrete color scale.
     board_df = board_df.with_columns((pl.lit("Tier: ") + pl.col('Tier').cast(pl.String)).alias('Tier'))
 
-
-    # Create the plot using Plotly Express for its simplicity with colors and error bars.
+    # Create the plot.
     fig = px.scatter(
         board_df.to_pandas(),
         x='ECR',
@@ -98,12 +96,94 @@ def create_tier_chart(board_df: pl.DataFrame, user_name: str | None) -> go.Figur
 
     return fig
 
+
+def create_efficiency_chart(efficiency_df: pl.DataFrame, user_name: str | None = None) -> go.Figure:
+    """
+    Creates an interactive scatter plot showing player efficiency (actual vs. expected fantasy points).
+
+    Args:
+        efficiency_df (pl.DataFrame): A DataFrame containing player efficiency data,
+                                      including 'total_fantasy_points_exp' and 'total_fantasy_points'.
+        user_name (str, optional): The name of the user to highlight. Players owned by this user will be labeled. Defaults to None.
+
+    Returns:
+        go.Figure: A Plotly figure object ready to be displayed in a dcc.Graph.
+    """
+    if efficiency_df.is_empty():
+        # Return an empty figure if there's no data
+        return go.Figure()
+
+    # Add an ownership status column for dynamic coloring
+    if user_name and 'Owner' in efficiency_df.columns:
+        efficiency_df = efficiency_df.with_columns(
+            pl.when(pl.col('Owner') == user_name).then(
+                pl.lit(user_name)
+            ).when(
+                pl.col('Owner') == 'Free Agent'
+            ).then(pl.lit('Free Agent')
+            ).otherwise(
+                pl.lit('Owned by Other')
+            ).alias('Status')
+        )
+        color_map = {user_name: '#1100FF', 'Free Agent': '#089E00', 'Owned by Other': '#FF1100'}
+    else:
+        efficiency_df = efficiency_df.with_columns(pl.lit('N/A').alias('Status'))
+        color_map = {'N/A': '#1100FF'}
+
+    # Convert to pandas for Plotly integration
+    plot_df = efficiency_df.to_pandas()
+
+    # Create the scatter plot
+    fig = px.scatter(
+        plot_df,
+        x='Actual Points',
+        y='Expected Points',
+        color='Status',
+        color_discrete_map=color_map,
+        custom_data=['Player', 'Efficiency', 'Owner'],
+        title="Player Efficiency: Actual vs. Expected Fantasy Point Production"
+    )
+
+    # Add the y=x line
+    max_val = max(efficiency_df['Actual Points'].max(), efficiency_df['Expected Points'].max())
+    max_val = max_val * 1.05 # Small buffer
+    fig.add_shape(
+        type="line",
+        x0=0, y0=0, x1=max_val, y1=max_val,
+        line=dict(color="grey", width=1, dash="dash"),
+        name="Expected Efficiency"
+    )
+
+    fig.update_layout(
+        xaxis_title="Expected Fantasy Points",
+        yaxis_title="Actual Fantasy Points",
+        hovermode="closest",
+        font_color='black',
+        legend_title_text='Ownership',
+        # Ensure the line is visible even if data is sparse
+        xaxis_range=[0, max_val],
+        yaxis_range=[0, max_val]
+    )
+
+    # Customize the hover text.
+    fig.update_traces(
+        hovertemplate=(
+            "<b>%{customdata[0]}</b><br>" +
+            "Owner: %{customdata[2]}<br>" +
+            "Actual Points: %{y:.2f}<br>" +
+            "Expected Points: %{x:.2f}<br>" +
+            "Efficiency: %{customdata[1]:+.2f}" +
+            "<extra></extra>"  # Hides the secondary box
+        )
+    )
+
+    return fig
+
+
 if __name__ == '__main__':
     pl.Config(tbl_rows=-1, tbl_cols=-1)
 
-    from src.boards import create_board
-    from src.tiers import create_tiers
+    from efficiency import compute_efficiency
     league_id = input('Enter Sleeper platform league number (This is found in the sleeper url):')
-    board_df = create_board(league_id, draft=False).filter(pl.col('pos') == 'QB')
-    board_df = create_tiers(board_df, tier_range=range(10,12+1), n_players=60)
-    print(create_tier_chart(board_df).show())
+    efficiency_df = compute_efficiency(league_id, offseason=True).filter(pl.col('pos') == 'RB')
+    create_efficiency_chart(efficiency_df, user_name=None).show()

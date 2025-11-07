@@ -15,22 +15,25 @@ The dashboard is organized into two main sections: **Draft Tools** and **In-Seas
 ### Core Functionality
 - **League-Aware Analysis**: Enter your Sleeper League ID to unlock features like player ownership tracking and filtering for free agents.
 - **Default Mode**: The app is fully functional even without a League ID, providing general rankings and visualizations.
-- **High-Performance Backend**: Utilizes Polars for fast data processing and `dcc.Store for efficient data caching within user sessions.
+- **High-Performance Backend**: Utilizes `Polars` for fast data processing and `Dash` for efficient data caching.
 - **Live Data**: Player rankings and projections are fetched from `nflreadpy`, ensuring the data is up-to-date.
 
 ### Draft Tools
 - **Dynasty Draft Board**: A sortable and filterable table showing dynasty rankings (ECR), player age, and ownership status.
-- **Draft Tiers Visualization**: An interactive chart that groups players into statistically distinct tiers based on their ECR, Best, and Worst ranks. This helps identify value drop-offs at each position.
+- **Draft Tiers**: An interactive visualization that groups players into statistically distinct tiers based on their ECR ranks. This helps identify value drop-offs at each position.
 - **Dynasty Trade Values**: Side-by-side, scrollable tables displaying player trade values for each position.
+- **Season Efficiency**: A scatter plot showing actual vs. expected fantasy points for a player over the previous season. Used to spot scoring regression candidates for the next season.
 
 ### In-Season Tools
 - **Weekly Projections**: A table displaying weekly positional rankings, ECR, and start/sit grades to help with lineup decisions.
-- **Weekly Tiers Visualization**: A similar tier chart tailored for weekly rankings to identify the best available players for a given week.
+- **Weekly Tiers**: A similar tier chart to above tailored for weekly rankings.
+- **Last Season Efficiency**: An interactive scatter plot showing actual vs. expected fantasy points for the previous season, helping identify over/under-performers.
+- **Weekly Efficiency**: A scatter plot showing actual vs. expected fantasy points for the most recent week. Used to spot efficiency trends throughout the season.
 
 ## Packages/Frameworks
 
 - **Dashboard & Visualizations**: Dash, Plotly
-- **Data Manipulation**: Polars
+- **Data Pipeline**: Polars
 - **Data Source**: nflreadpy, Sleeper API
 - **Machine Learning**: scikit-learn
 
@@ -72,7 +75,7 @@ To run the dashboard on your local machine, follow these steps.
 1.  Upon loading, the dashboard will display general, non-league-specific rankings and visualizations.
 2.  To enable league-specific features, enter your Sleeper League ID in the input box at the top and press Enter.
 3.  Once the league data is loaded, the "Select Owner" dropdown and "Show Taken Players" checkboxes will become active.
-4.  Select your owner name to enable ownership-based filtering and table styling.
+4.  Select your owner name to enable ownership-based filtering and styling.
 5.  Navigate through the nested tabs to explore the different tools available.
 
 ## Future Additions 
@@ -80,5 +83,4 @@ To run the dashboard on your local machine, follow these steps.
 This is a living project with many planned features including:
 
 - **League View**: A "bird's-eye view" tab that displays all team rosters in the league side-by-side with strength analysis.
-- **Touchdown Regression**: Use historical data to predict touchdown regression candidacy in the following season.
-- **In-house Projections** Use historical data to produce custom scoring projections.
+- **In-house Projections** Use historical data to produce custom scoring projections. XGBoost based?
