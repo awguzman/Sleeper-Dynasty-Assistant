@@ -25,24 +25,24 @@ def compute_efficiency(league_id: str | None, offseason: bool = False) -> pl.Dat
     current_season = get_current_season(roster=False) # This updates on March 15 (Start of Free Agency).
     opp_features = ['season', 'week', 'player_id', 'full_name', 'position', 'total_fantasy_points', 'total_fantasy_points_exp']
 
+    # Choose correct season to load data from.
     if offseason:
-        # Load player opportunity data for the previous season.
-        opp_df = load_ff_opportunity(seasons=[current_season - 1], stat_type='weekly', model_version='latest')
-        opp_df = opp_df.select(opp_features)
-
-        # Group by player and sum the points over all weeks of the season.
-        opp_df = opp_df.group_by(['season', 'player_id', 'full_name', 'position']).agg([
-            pl.col('total_fantasy_points').sum(),
-            pl.col('total_fantasy_points_exp').sum()
-        ]).filter(pl.col('total_fantasy_points') > 25) # Limit low participation players
+        season = current_season - 1
+        cutoff = 17 # Cutoff for average of 1 point per game.
     else:
-        # Load player opportunity data for the current season.
-        opp_df = load_ff_opportunity(seasons=[current_season], stat_type='weekly', model_version='latest')
-        opp_df = opp_df.select(opp_features).filter(pl.col('total_fantasy_points') > 1)
+        season = current_season
+        cutoff = get_current_week() - 1 # Cutoff for average of 1 point per game.
 
-        # If in-season, just look at the previous week.
-        prev_week = get_current_week() - 1 # This updates after MNF
-        opp_df = opp_df.filter(pl.col('week') == prev_week)
+
+    # Load player opportunity data for the selected season.
+    opp_df = load_ff_opportunity(seasons=[season], stat_type='weekly', model_version='latest')
+    opp_df = opp_df.select(opp_features)
+
+    # Group by player and sum the points over all weeks of the season.
+    opp_df = opp_df.group_by(['season', 'player_id', 'full_name', 'position']).agg([
+        pl.col('total_fantasy_points').sum(),
+        pl.col('total_fantasy_points_exp').sum()
+    ]).filter(pl.col('total_fantasy_points') > cutoff)  # Limit low participation players
 
     # Compute efficiency as difference between actual and expected points.
     opp_df = opp_df.with_columns((pl.col('total_fantasy_points_exp') - pl.col('total_fantasy_points')).round(2).alias('Efficiency'))

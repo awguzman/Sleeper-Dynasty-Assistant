@@ -19,7 +19,7 @@ from src.trade import create_trade_values
 from src.efficiency import compute_efficiency
 from src.visualizations import create_tier_chart, create_efficiency_chart
 
-# --- Configure Cache ---
+# --- Configure nflreadpy Cache ---
 from pathlib import Path
 from nflreadpy.config import update_config
 
@@ -451,7 +451,7 @@ app.layout = html.Div([
                     ),
                 ]),
                 # --- Weekly Efficiency Tab ---
-                dcc.Tab(label='Last Week Efficiency', value='weekly-efficiency', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
+                dcc.Tab(label='Efficiency', value='weekly-efficiency', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
                     html.Br(),
                     html.Div([
                         html.Label("Position: ", style={'margin-right': '20px'}),
@@ -476,8 +476,8 @@ app.layout = html.Div([
                     ),
                     html.Hr(),
                     dcc.Markdown("""
-                        This chart plots a player's actual fantasy points vs. their expected points based on usage for the previous week.
-                        *   **Players above the line** were efficient and scored more than expected (potential regression candidate).
+                        This chart plots a player's actual fantasy points vs. their expected points based on usage so far this season.
+                        *   **Players above the line** were efficient and scored more than expected.
                         *   **Players below the line** were inefficient and scored less than expected.
                     """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
                 ]),
