@@ -28,7 +28,7 @@ The dashboard is organized into two main sections: **Draft Tools** and **In-Seas
 - **Weekly Projections**: A table displaying weekly positional rankings, ECR, and start/sit grades to help with lineup decisions.
 - **Weekly Tiers**: A similar tier chart to above tailored for weekly rankings.
 - **Last Season Efficiency**: An interactive scatter plot showing actual vs. expected fantasy points for the previous season, helping identify over/under-performers.
-- **Weekly Efficiency**: A scatter plot showing actual vs. expected fantasy points for the most recent week. Used to spot efficiency trends throughout the season.
+- **Efficiency**: A scatter plot showing actual vs. expected fantasy points for the season so far. Used to spot efficiency trends throughout the season.
 
 ## Packages/Frameworks
 
