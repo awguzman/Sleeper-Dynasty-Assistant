@@ -2,10 +2,11 @@
 This module defines the layout and callback logic for the Sleeper Dynasty Assistant dashboard.
 """
 
+# --- Backend Imports ---
 import polars as pl
 import io
 
-# --- Dash/Plotly Imports ---
+# --- Dashboard Imports ---
 import dash
 from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output, State
@@ -17,7 +18,8 @@ from src.league import get_league_info
 from src.tiers import create_tiers
 from src.trade import create_trade_values
 from src.efficiency import compute_efficiency
-from src.visualizations import create_tier_chart, create_efficiency_chart
+from src.advanced_stats import receiving_share
+from src.visualizations import create_tier_chart, create_efficiency_chart,  create_share_chart
 
 # --- Configure nflreadpy Cache ---
 from pathlib import Path
@@ -314,7 +316,7 @@ app.layout = html.Div([
                     html.Hr(),
                     dcc.Markdown("""
                         This chart plots a player's actual fantasy points vs. their expected points based on usage for the entire season.
-                        *   **Players above the line** were efficient and scored more than expected (potential regression candidates).
+                        *   **Players above the line** were efficient with their fantasy production and scored more than expected (potential regression candidates).
                         *   **Players below the line** were inefficient and scored less than expected.
                     """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
                 ]),
@@ -451,7 +453,7 @@ app.layout = html.Div([
                     ),
                 ]),
                 # --- Weekly Efficiency Tab ---
-                dcc.Tab(label='Efficiency', value='weekly-efficiency', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
+                dcc.Tab(label='Fantasy Efficiency', value='weekly-efficiency', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
                     html.Br(),
                     html.Div([
                         html.Label("Position: ", style={'margin-right': '20px'}),
@@ -477,9 +479,37 @@ app.layout = html.Div([
                     html.Hr(),
                     dcc.Markdown("""
                         This chart plots a player's actual fantasy points vs. their expected points based on usage so far this season.
-                        *   **Players above the line** were efficient and scored more than expected.
+                        *   **Players above the line** were efficient with their fantasy production and scored more than expected.
                         *   **Players below the line** were inefficient and scored less than expected.
                     """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
+                ]),
+            ]),
+        ]),
+
+        # --- Top Level Tab: Advanced Stats ---
+        dcc.Tab(label='Advanced Stats', className='custom-top-tab', selected_className='custom-top-tab-selected', children=[
+                # --- Nested Tabs for parent In-Season Tools tab
+                dcc.Tabs(className='nested-tabs-container', children=[
+                    # --- Receiving Share tab ---
+                    dcc.Tab(label='Receiving Share', className='custom-nested-tab',
+                            selected_className='custom-nested-tab-selected', children=[
+                            html.Br(),
+
+                            dcc.Loading(
+                                id='loading-share-chart',
+                                type='circle',
+                                children=dcc.Graph(id='share-chart')
+                            ),
+                            html.Hr(),
+                            dcc.Markdown("""
+                            *Target Share* refers to how often that player is targeted with respect to the rest of the receivers on their team.
+                            *Air Yard Share* refers to the total number of yards the ball traveled on those targets (including incompletions) with respect to the rest of their team. 
+                            
+                            **Note:** Use this chart to understand how much opportunity a receiver has been given throughout the season. Whether they actually convert this opportunity to produce fantasy points is not represented here.
+                            
+                            **Tooltip**: WOPR is the Weighted Opportunity Rating. It combines both target and air yard share into a single metric to measure receiving opportunity. The higher this number, the more of a focal point this player is to their offense.
+                            """,
+                            style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px','padding-top': '10px'})
                 ]),
             ]),
         ]),
@@ -836,26 +866,26 @@ def update_trade_value_tables(draft_data, owner_name, league_id):
     wr_data, wr_columns = prep_value_tables('WR')
     te_data, te_columns = prep_value_tables('TE')
 
-    return qb_data, qb_columns, rb_data, rb_columns, wr_data, wr_columns, te_data, te_columns, styles, styles, styles, styles
+    return (qb_data, qb_columns, rb_data, rb_columns, wr_data, wr_columns,
+            te_data, te_columns, styles, styles, styles, styles)
 
 
 # --- Callback to Update Offseason Efficiency Chart ---
 @app.callback(
     Output('offseason-efficiency-chart', 'figure'),
     [
-        Input('league-id-input', 'value'),
         Input('owner-name-dropdown', 'value'),
         Input('position-offseason-efficiency-selection', 'value')
-    ]
+    ],
+    [State('league-id-input', 'value')]
 )
-def update_offseason_efficiency_chart(league_id, owner_name, position):
+def update_offseason_efficiency_chart(owner_name, position, league_id):
     """
     Computes full-season player efficiency and generates the scatter plot visualization.
     """
     if not position:
         return go.Figure()
 
-    # This is a more expensive operation, so it's computed on demand.
     efficiency_df = compute_efficiency(league_id=league_id, offseason=True)
 
     if efficiency_df.is_empty():
@@ -872,12 +902,12 @@ def update_offseason_efficiency_chart(league_id, owner_name, position):
 @app.callback(
     Output('weekly-efficiency-chart', 'figure'),
     [
-        Input('league-id-input', 'value'),
         Input('owner-name-dropdown', 'value'),
         Input('position-weekly-efficiency-selection', 'value')
-    ]
+    ],
+    [State('league-id-input', 'value')]
 )
-def update_weekly_efficiency_chart(league_id, owner_name, position):
+def update_weekly_efficiency_chart(owner_name, position, league_id):
     """
     Computes previous-week player efficiency and generates the scatter plot visualization.
     """
@@ -891,6 +921,27 @@ def update_weekly_efficiency_chart(league_id, owner_name, position):
 
     pos_df = efficiency_df.filter(pl.col('pos') == position)
     return create_efficiency_chart(pos_df, user_name=owner_name)
+
+# --- Callback to Update Receiving Share Chart ---
+@app.callback(
+    Output('share-chart', 'figure'),
+    [
+        Input('owner-name-dropdown', 'value'),
+        Input('league-id-input', 'value')
+    ],
+)
+def update_share_chart(owner_name, league_id):
+    """
+    Computes full-season player efficiency and generates the scatter plot visualization.
+    """
+
+    share_df = receiving_share(league_id=league_id)
+
+    if share_df.is_empty():
+        return go.Figure()
+
+    # Generate the Plotly figure, passing the owner_name for highlighting
+    return create_share_chart(share_df, user_name=owner_name)
 
 
 # --- Run the Application ---

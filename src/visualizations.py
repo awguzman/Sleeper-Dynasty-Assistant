@@ -12,8 +12,7 @@ def create_tier_chart(board_df: pl.DataFrame, user_name: str | None) -> go.Figur
     Creates an interactive tier chart showing player ECR with best/worst error bars.
 
     Args:
-        board_df (pl.DataFrame): A DataFrame containing player data with tiers,
-                                 ECR, Best, and Worst columns.
+        board_df (pl.DataFrame): A DataFrame containing player data with tiers. Should originate from src.tiers.create_tiers().
         user_name (str, Optional): Username for conditional styling of owned players.
 
     Returns:
@@ -102,8 +101,7 @@ def create_efficiency_chart(efficiency_df: pl.DataFrame, user_name: str | None =
     Creates an interactive scatter plot showing player efficiency (actual vs. expected fantasy points).
 
     Args:
-        efficiency_df (pl.DataFrame): A DataFrame containing player efficiency data,
-                                      including 'total_fantasy_points_exp' and 'total_fantasy_points'.
+        efficiency_df (pl.DataFrame): A DataFrame containing player efficiency data. Should originate from src.efficiency.compute_efficiency().
         user_name (str, optional): The name of the user to highlight. Players owned by this user will be labeled. Defaults to None.
 
     Returns:
@@ -180,10 +178,106 @@ def create_efficiency_chart(efficiency_df: pl.DataFrame, user_name: str | None =
     return fig
 
 
+def create_share_chart(share_df: pl.DataFrame, user_name: str | None = None) -> go.Figure:
+    """
+        Creates an interactive scatter plot showing receiver target and air yard share statistics.
+
+        Args:
+            share_df (pl.DataFrame): A DataFrame containing player receiving share data. Should originate from src.advanced_stats.receiving_share().
+            user_name (str, optional): The name of the user to highlight. Players owned by this user will be labeled. Defaults to None.
+
+        Returns:
+            go.Figure: A Plotly figure object ready to be displayed in a dcc.Graph.
+        """
+    if share_df.is_empty():
+        # Return an empty figure if there's no data
+        return go.Figure()
+
+    # Filter out low share players.
+    share_df = share_df.filter((pl.col('Air Yards Share') >= 0.05) | (pl.col('Target Share') >= 0.05))
+
+    # Add an ownership status column for dynamic coloring
+    if user_name and 'Owner' in share_df.columns:
+        share_df = share_df.with_columns(
+            pl.when(pl.col('Owner') == user_name).then(
+                pl.lit(user_name)
+            ).when(
+                pl.col('Owner') == 'Free Agent'
+            ).then(pl.lit('Free Agent')
+                   ).otherwise(
+                pl.lit('Owned by Other')
+            ).alias('Status')
+        )
+        color_map = {user_name: '#1100FF', 'Free Agent': '#089E00', 'Owned by Other': '#FF1100'}
+    else:
+        share_df = share_df.with_columns(pl.lit('N/A').alias('Status'))
+        color_map = {'N/A': '#1100FF'}
+
+    # Convert to pandas for Plotly integration
+    plot_df = share_df.to_pandas()
+
+    # Create the scatter plot
+    fig = px.scatter(
+        plot_df,
+        y='Air Yards Share',
+        x='Target Share',
+        color='Status',
+        color_discrete_map=color_map,
+        custom_data=['Player', 'WOPR', 'Owner'],
+        title="Receiving Share: Team Air Yard Share vs. Team Target Share"
+    )
+
+    # --- Calculate and Add Linear Regression ---
+    x_col, y_col = 'Target Share', 'Air Yards Share'
+    x_mean = share_df[x_col].mean()
+    y_mean = share_df[y_col].mean()
+    xy_cov = pl.cov(share_df[x_col], share_df[y_col], eager=True).item()
+    x_var = share_df[x_col].var()
+
+    slope = xy_cov / x_var
+    intercept = y_mean - slope * x_mean
+
+    x0 = share_df.select(x_col).min().item()
+    x1 = share_df.select(x_col).max().item()
+    y0 = slope * x0 + intercept
+    y1 = slope * x1 + intercept
+
+    # Regression Line
+    fig.add_shape(
+        type="line",
+        x0=x0, y0=y0, x1=x1, y1=y1,
+        line=dict(color="grey", width=1, dash="dash"),
+        name="Expected Share"
+    )
+
+    fig.update_layout(
+        yaxis_title="Team Air Yard Share",
+        xaxis_title="Team Target Share",
+        hovermode="closest",
+        font_color='black',
+        legend_title_text='Ownership',
+        # Set axis ranges to give a bit of padding
+        xaxis_range=[share_df[x_col].min() * 0.9, share_df[x_col].max() * 1.1],
+        yaxis_range=[share_df[y_col].min() * 0.9, share_df[y_col].max() * 1.1]
+    )
+
+    # Customize the hover text.
+    fig.update_traces(
+        hovertemplate=(
+                "<b>%{customdata[0]}</b><br>" +
+                "Owner: %{customdata[2]}<br>" +
+                "Target Share: %{x:.2f}<br>" +
+                "Air Yard Share: %{y:.2f}<br>" +
+                "WOPR: %{customdata[1]:.2f}" +
+                "<extra></extra>"  # Hides the secondary box
+        )
+    )
+
+    return fig
 if __name__ == '__main__':
     pl.Config(tbl_rows=-1, tbl_cols=-1)
 
-    from efficiency import compute_efficiency
+    from advanced_stats import receiving_share
     league_id = input('Enter Sleeper platform league number (This is found in the sleeper url):')
-    efficiency_df = compute_efficiency(league_id, offseason=True).filter(pl.col('pos') == 'RB')
-    create_efficiency_chart(efficiency_df, user_name=None).show()
+    share_df = receiving_share(league_id = None)
+    create_share_chart(share_df, user_name=None).show()
