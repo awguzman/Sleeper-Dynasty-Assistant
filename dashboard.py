@@ -18,8 +18,9 @@ from src.league import get_league_info
 from src.tiers import create_tiers
 from src.trade import create_trade_values
 from src.efficiency import compute_efficiency
-from src.advanced_stats import receiving_share
-from src.visualizations import create_tier_chart, create_efficiency_chart,  create_share_chart
+from src.advanced_stats import receiving_share, stacked_box_efficiency, receiver_separation, qb_aggressiveness
+from src.visualizations import (create_tier_chart, create_efficiency_chart,  create_share_chart, create_box_chart,
+                                create_separation_chart, create_qb_playstyle_chart)
 
 # --- Configure nflreadpy Cache ---
 from pathlib import Path
@@ -511,6 +512,69 @@ app.layout = html.Div([
                             """,
                             style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px','padding-top': '10px'})
                 ]),
+                    # --- Receiver Separation tab ---
+                    dcc.Tab(label='Receiver Separation', className='custom-nested-tab',
+                            selected_className='custom-nested-tab-selected', children=[
+                            html.Br(),
+
+                            dcc.Loading(
+                                id='loading-separation-chart',
+                                type='circle',
+                                children=dcc.Graph(id='separation-chart')
+                            ),
+                            html.Hr(),
+                            dcc.Markdown("""
+                            This chart plots a receiver's ability to get open against the respect defenses give them.
+
+                            *   **Cushion**: How far off the line of scrimmage a covering defender plays.
+                            *   **Separation**: How open a receiver is when the pass arrives. 
+                            
+                            **Note:** The size of the bubble indicates the number of targets. The bigger the bubble, the more accurate its placement in the chart.
+                            """,
+                            style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px','padding-top': '10px'})
+                ]),
+                    # --- Stacked Box tab ---
+                    dcc.Tab(label='Rushing Vs. Stacked Box', className='custom-nested-tab',
+                            selected_className='custom-nested-tab-selected', children=[
+                            html.Br(),
+
+                            dcc.Loading(
+                                id='loading-box-chart',
+                                type='circle',
+                                children=dcc.Graph(id='box-chart')
+                            ),
+                            html.Hr(),
+                            dcc.Markdown("""
+                            This chart plots a running back's efficiency against the difficulty of their situation.
+                
+                            *   **Rush Yards over Expected per Attempt**: Measures how many more yards a player gains compared to an average back in the exact same situation (down, distance, defensive alignment, etc.). This is a measure of pure talent and elusiveness.
+                            *   **Stacked Box Percentage**: Shows how often a player runs against 8 or more defenders in the box. This is a measure of the difficulty of their role.
+                            
+                            **Note:** The size of the bubble indicates the number of rushing attempts. The bigger the bubble, the more accurate its placement in the chart.
+                            """,
+                            style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px','padding-top': '10px'})
+                ]),
+                    # --- QB Aggressiveness tab ---
+                    dcc.Tab(label='QB Aggressiveness', className='custom-nested-tab',
+                            selected_className='custom-nested-tab-selected', children=[
+                            html.Br(),
+
+                            dcc.Loading(
+                                id='loading-qb-chart',
+                                type='circle',
+                                children=dcc.Graph(id='qb-chart')
+                            ),
+                            html.Hr(),
+                            dcc.Markdown("""
+                            This chart plots a quarterback's efficiency against how aggressive they are.
+
+                            *   **Aggressiveness**: The percentage of a QB's throws that are into tight windows (defender within 1 yard).
+                            *   **CPOE**: Completion Percentage Above Expectation. A measure of pure accuracy against the difficulty of the throw.
+                            
+                            **Note:** The size of the bubble indicates the number of passing attempts. The bigger the bubble, the more accurate its placement in the chart.
+                            """,
+                            style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px','padding-top': '10px'})
+                ]),
             ]),
         ]),
     ]),
@@ -932,9 +996,9 @@ def update_weekly_efficiency_chart(owner_name, position, league_id):
 )
 def update_share_chart(owner_name, league_id):
     """
-    Computes full-season player efficiency and generates the scatter plot visualization.
+    Computes full-season receiving share data and generates the scatter plot visualization.
     """
-
+    # Load in receiving share data
     share_df = receiving_share(league_id=league_id)
 
     if share_df.is_empty():
@@ -942,6 +1006,72 @@ def update_share_chart(owner_name, league_id):
 
     # Generate the Plotly figure, passing the owner_name for highlighting
     return create_share_chart(share_df, user_name=owner_name)
+
+
+# --- Callback to Update Stacked Box Chart ---
+@app.callback(
+    Output('box-chart', 'figure'),
+    [
+        Input('owner-name-dropdown', 'value'),
+        Input('league-id-input', 'value')
+    ],
+)
+def update_box_chart(owner_name, league_id):
+    """
+    Computes full-season rushing efficiency vs stacked box data and generates the scatter plot visualization.
+    """
+    # Load in stacked box data
+    box_df = stacked_box_efficiency(league_id=league_id)
+
+    if box_df.is_empty():
+        return go.Figure()
+
+    # Generate the Plotly figure, passing the owner_name for highlighting
+    return create_box_chart(box_df, user_name=owner_name)
+
+
+# --- Callback to Update Receiver Separation Chart ---
+@app.callback(
+    Output('separation-chart', 'figure'),
+    [
+        Input('owner-name-dropdown', 'value'),
+        Input('league-id-input', 'value')
+    ],
+)
+def update_separation_chart(owner_name, league_id):
+    """
+    Computes receiver separation data and generates the scatter plot visualization.
+    """
+    # Load in separation data
+    separation_df = receiver_separation(league_id=league_id)
+
+    if separation_df.is_empty():
+        return go.Figure()
+
+    # Generate the Plotly figure, passing the owner_name for highlighting
+    return create_separation_chart(separation_df, user_name=owner_name)
+
+
+# --- Callback to Update QB Aggressiveness Chart ---
+@app.callback(
+    Output('qb-chart', 'figure'),
+    [
+        Input('owner-name-dropdown', 'value'),
+        Input('league-id-input', 'value')
+    ],
+)
+def update_aggressiveness_chart(owner_name, league_id):
+    """
+    Computes QB Aggressiveness data and generates the scatter plot visualization.
+    """
+    # Load in QB aggressiveness data
+    qb_df = qb_aggressiveness(league_id=league_id)
+
+    if qb_df.is_empty():
+        return go.Figure()
+
+    # Generate the Plotly figure, passing the owner_name for highlighting
+    return create_qb_playstyle_chart(qb_df, user_name=owner_name)
 
 
 # --- Run the Application ---

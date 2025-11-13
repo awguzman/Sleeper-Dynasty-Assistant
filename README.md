@@ -10,7 +10,7 @@ Note: This web version is VERY slow due to the free-tier limitations of render.c
 
 ## Features
 
-The dashboard is organized into two main sections: **Draft Tools** and **In-Season Tools**.
+The dashboard is organized into three main sections: **Draft Tools**, **In-Season Tools**, and **Advanced Stats**.
 
 ### Core Functionality
 - **League-Aware Analysis**: Enter your Sleeper League ID to unlock features like player ownership tracking and filtering for free agents.
@@ -27,8 +27,13 @@ The dashboard is organized into two main sections: **Draft Tools** and **In-Seas
 ### In-Season Tools
 - **Weekly Projections**: A table displaying weekly positional rankings, ECR, and start/sit grades to help with lineup decisions.
 - **Weekly Tiers**: A similar tier chart to above tailored for weekly rankings.
-- **Last Season Efficiency**: An interactive scatter plot showing actual vs. expected fantasy points for the previous season, helping identify over/under-performers.
 - **Efficiency**: A scatter plot showing actual vs. expected fantasy points for the season so far. Used to spot efficiency trends throughout the season.
+
+### Advanced Stats
+- **Receiving Share**: A scatter plot visualizing a receiver's role by comparing their share of team targets vs. their share of team air yards.
+- **Receiver Separation**: An interactive chart that plots a receiver's ability to get open (Separation) against the respect defenses give them (Cushion).
+- **Rushing Vs. Stacked Box**: A bubble chart that identifies a running back's pure talent by comparing their efficiency (RYOE) against the difficulty of their situation (Stacked Box %).
+- **QB Aggressiveness**: A bubble chart that profiles a quarterback's playstyle by comparing their accuracy (CPOE) against their willingness to throw into tight windows (Aggressiveness).
 
 ## Packages/Frameworks
 
