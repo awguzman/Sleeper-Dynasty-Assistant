@@ -26,7 +26,7 @@ from src.visualizations import (create_tier_chart, create_efficiency_chart,  cre
 from pathlib import Path
 from nflreadpy.config import update_config
 
-cache_dir = Path(__file__).resolve().parent.parent / 'cache'
+cache_dir = Path(__file__).resolve().parent / 'cache'
 update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True, cache_duration=3600)
 
 # Initialize the Dash application. Suppress callback exceptions due to dynamic layout.
@@ -39,10 +39,11 @@ server = app.server
 # The layout is the root component that describes the application's appearance.
 app.layout = html.Div([
     # --- Data Stores ---
-    # These hidden components store the results of expensive computations (the full boards).
+    # These hidden components store the results of expensive computations.
     dcc.Store(id='draft-positional-board-store'),
     dcc.Store(id='draft-overall-board-store'),
     dcc.Store(id='weekly-board-store'),
+    dcc.Store(id='league-info-store'),
 
     # --- Header Section ---
     html.Div([
@@ -610,29 +611,47 @@ def update_owner_dropdown(league_id):
     return [], True, [], []
 
 
+# --- Callback to fetch and store league-specific data ---
+@app.callback(
+    Output('league-info-store', 'data'),
+    Input('league-id-input', 'value')
+)
+def update_league_store(league_id):
+    """
+    Fetches league data from the Sleeper API when the league_id changes and stores it as JSON in a dcc.Store.
+    """
+    if not league_id:
+        return None  # Return None if no ID is provided
+
+    league_df = get_league_info(league_id)
+    return league_df.write_json()
+
+
 # --- Master Callback to Compute and Store Full Board Data ---
 @app.callback(
     [Output('draft-positional-board-store', 'data'),
      Output('draft-overall-board-store', 'data'),
      Output('weekly-board-store', 'data')],
-    [Input('league-id-input', 'value')],
-    prevent_initial_call=False  # Ensure this runs on page load
+    [Input('league-info-store', 'data')],  # Triggered when league data is ready
+    # prevent_initial_call=False  # Ensure this runs on page load
 )
-def update_board_stores(league_id):
+def update_board_stores(league_data):
     """
     This master callback runs the expensive computations once and stores the results.
-    It's triggered only when the league ID changes.
+    It's triggered when the league data becomes available.
     """
+    league_df = pl.read_json(io.StringIO(league_data)) if league_data else None
+
     # --- Create and store the full positional draft board ---
-    draft_positional_board_df = create_board(league_id=league_id, draft=True, positional=True)
+    draft_positional_board_df = create_board(league_df=league_df, draft=True, positional=True)
     draft_positional_data = draft_positional_board_df.write_json()
 
     # --- Create and store the full overall draft board ---
-    draft_overall_board_df = create_board(league_id=league_id, draft=True, positional=False)
+    draft_overall_board_df = create_board(league_df=league_df, draft=True, positional=False)
     draft_overall_data = draft_overall_board_df.write_json()
 
     # --- Create and store the full weekly board (all positions) ---
-    weekly_board_df = create_board(league_id=league_id, draft=False)
+    weekly_board_df = create_board(league_df=league_df, draft=False, positional=True) # positional is ignored
     weekly_data = weekly_board_df.write_json()
 
     return draft_positional_data, draft_overall_data, weekly_data
@@ -653,9 +672,8 @@ def update_board_stores(league_id):
         Input('position-draft-selection', 'value'),
         Input('show-taken-draft-checkbox', 'value')
     ],
-    [State('league-id-input', 'value')]  # Get league_id without re-triggering
 )
-def update_draft_table(owner_name, draft_positional_data, draft_overall_data, position, show_taken_value, league_id):
+def update_draft_table(owner_name, draft_positional_data, draft_overall_data, position, show_taken_value):
     """
     Updates the dynasty draft board table based on user selections.
 
@@ -680,7 +698,7 @@ def update_draft_table(owner_name, draft_positional_data, draft_overall_data, po
     show_taken_flag = bool(show_taken_value)
 
     # Apply roster filtering if requested
-    if not show_taken_flag and league_id and owner_name:
+    if not show_taken_flag and owner_name and 'Owner' in board_df.columns and board_df['Owner'][0] != 'N/A':
         board_df = board_df.filter((pl.col('Owner') == owner_name) | (pl.col('Owner') == 'Free Agent'))
 
     # Get scrape_date to represent the last update of the data.
@@ -695,7 +713,7 @@ def update_draft_table(owner_name, draft_positional_data, draft_overall_data, po
     columns_to_drop = ['fantasypros_id', 'scrape_date', 'pos']
 
     # Only apply ownership styling and show Owner column if a league is active
-    if league_id:
+    if 'Owner' in board_df.columns and board_df['Owner'][0] != 'N/A':
         if owner_name:
             styles.append({
                 'if': {'filter_query': '{Owner} = "' + owner_name + '"'},
@@ -731,9 +749,8 @@ def update_draft_table(owner_name, draft_positional_data, draft_overall_data, po
         Input('position-proj-selection', 'value'),
         Input('show-taken-proj-checkbox', 'value')
     ],
-    [State('league-id-input', 'value')]  # Get league_id without re-triggering
 )
-def update_proj_table(owner_name, weekly_data, position, show_taken_value, league_id):
+def update_proj_table(owner_name, weekly_data, position, show_taken_value):
     """
     Updates the weekly projections table based on user selections.
 
@@ -754,7 +771,7 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value, leagu
     show_taken_flag = bool(show_taken_value)
 
     # Apply roster filtering if requested
-    if not show_taken_flag and league_id and owner_name:
+    if not show_taken_flag and owner_name and 'Owner' in board_df.columns and board_df['Owner'][0] != 'N/A':
         board_df = board_df.filter((pl.col('Owner') == owner_name) | (pl.col('Owner') == 'Free Agent'))
 
     # Get scrape_date to represent the last update of the data.
@@ -769,7 +786,7 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value, leagu
     columns_to_drop = ['fantasypros_id', 'scrape_date', 'pos']
 
     # Only apply ownership styling and show Owner column if a league is active
-    if league_id:
+    if 'Owner' in board_df.columns and board_df['Owner'][0] != 'N/A':
         if owner_name:
             styles.append({
                 'if': {'filter_query': '{Owner} = "' + owner_name + '"'},
@@ -887,9 +904,9 @@ def update_weekly_tier_chart(weekly_data, position, owner_name):
         Input('draft-overall-board-store', 'data'),
         Input('owner-name-dropdown', 'value')
     ],
-    [State('league-id-input', 'value')]
+    [State('league-info-store', 'data')]
 )
-def update_trade_value_tables(draft_data, owner_name, league_id):
+def update_trade_value_tables(draft_data, owner_name, league_data):
     """
     Calculates trade values and populates the four positional tables.
     """
@@ -901,11 +918,11 @@ def update_trade_value_tables(draft_data, owner_name, league_id):
     board_df = pl.read_json(io.StringIO(draft_data))
 
     # Get trade values
-    values_df = create_trade_values(board_df, league_id, inseason=False)
+    values_df = create_trade_values(board_df, inseason=False)
 
     # --- Generate Conditional Styling ---
     styles = []
-    if league_id and owner_name:
+    if league_data and owner_name:
         styles.append({
             'if': {'filter_query': '{Owner} = "' + owner_name + '"'},
             'backgroundColor': 'rgba(0, 123, 255, 0.15)',
@@ -941,16 +958,17 @@ def update_trade_value_tables(draft_data, owner_name, league_id):
         Input('owner-name-dropdown', 'value'),
         Input('position-offseason-efficiency-selection', 'value')
     ],
-    [State('league-id-input', 'value')]
+    [State('league-info-store', 'data')]
 )
-def update_offseason_efficiency_chart(owner_name, position, league_id):
+def update_offseason_efficiency_chart(owner_name, position, league_data):
     """
     Computes full-season player efficiency and generates the scatter plot visualization.
     """
     if not position:
         return go.Figure()
 
-    efficiency_df = compute_efficiency(league_id=league_id, offseason=True)
+    league_df = pl.read_json(io.StringIO(league_data)) if league_data else None
+    efficiency_df = compute_efficiency(league_df=league_df, offseason=True)
 
     if efficiency_df.is_empty():
         return go.Figure()
@@ -969,16 +987,17 @@ def update_offseason_efficiency_chart(owner_name, position, league_id):
         Input('owner-name-dropdown', 'value'),
         Input('position-weekly-efficiency-selection', 'value')
     ],
-    [State('league-id-input', 'value')]
+    [State('league-info-store', 'data')]
 )
-def update_weekly_efficiency_chart(owner_name, position, league_id):
+def update_weekly_efficiency_chart(owner_name, position, league_data):
     """
     Computes previous-week player efficiency and generates the scatter plot visualization.
     """
     if not position:
         return go.Figure()
 
-    efficiency_df = compute_efficiency(league_id=league_id, offseason=False)
+    league_df = pl.read_json(io.StringIO(league_data)) if league_data else None
+    efficiency_df = compute_efficiency(league_df=league_df, offseason=False)
 
     if efficiency_df.is_empty():
         return go.Figure()
@@ -990,16 +1009,17 @@ def update_weekly_efficiency_chart(owner_name, position, league_id):
 @app.callback(
     Output('share-chart', 'figure'),
     [
-        Input('owner-name-dropdown', 'value'),
-        Input('league-id-input', 'value')
+        Input('owner-name-dropdown', 'value')
     ],
+    [State('league-info-store', 'data')]
 )
-def update_share_chart(owner_name, league_id):
+def update_share_chart(owner_name, league_data):
     """
     Computes full-season receiving share data and generates the scatter plot visualization.
     """
     # Load in receiving share data
-    share_df = receiving_share(league_id=league_id)
+    league_df = pl.read_json(io.StringIO(league_data)) if league_data else None
+    share_df = receiving_share(league_df=league_df)
 
     if share_df.is_empty():
         return go.Figure()
@@ -1012,16 +1032,17 @@ def update_share_chart(owner_name, league_id):
 @app.callback(
     Output('box-chart', 'figure'),
     [
-        Input('owner-name-dropdown', 'value'),
-        Input('league-id-input', 'value')
+        Input('owner-name-dropdown', 'value')
     ],
+    [State('league-info-store', 'data')]
 )
-def update_box_chart(owner_name, league_id):
+def update_box_chart(owner_name, league_data):
     """
     Computes full-season rushing efficiency vs stacked box data and generates the scatter plot visualization.
     """
     # Load in stacked box data
-    box_df = stacked_box_efficiency(league_id=league_id)
+    league_df = pl.read_json(io.StringIO(league_data)) if league_data else None
+    box_df = stacked_box_efficiency(league_df=league_df)
 
     if box_df.is_empty():
         return go.Figure()
@@ -1034,16 +1055,17 @@ def update_box_chart(owner_name, league_id):
 @app.callback(
     Output('separation-chart', 'figure'),
     [
-        Input('owner-name-dropdown', 'value'),
-        Input('league-id-input', 'value')
+        Input('owner-name-dropdown', 'value')
     ],
+    [State('league-info-store', 'data')]
 )
-def update_separation_chart(owner_name, league_id):
+def update_separation_chart(owner_name, league_data):
     """
     Computes receiver separation data and generates the scatter plot visualization.
     """
     # Load in separation data
-    separation_df = receiver_separation(league_id=league_id)
+    league_df = pl.read_json(io.StringIO(league_data)) if league_data else None
+    separation_df = receiver_separation(league_df=league_df)
 
     if separation_df.is_empty():
         return go.Figure()
@@ -1056,16 +1078,17 @@ def update_separation_chart(owner_name, league_id):
 @app.callback(
     Output('qb-chart', 'figure'),
     [
-        Input('owner-name-dropdown', 'value'),
-        Input('league-id-input', 'value')
+        Input('owner-name-dropdown', 'value')
     ],
+    [State('league-info-store', 'data')]
 )
-def update_aggressiveness_chart(owner_name, league_id):
+def update_aggressiveness_chart(owner_name, league_data):
     """
     Computes QB Aggressiveness data and generates the scatter plot visualization.
     """
     # Load in QB aggressiveness data
-    qb_df = qb_aggressiveness(league_id=league_id)
+    league_df = pl.read_json(io.StringIO(league_data)) if league_data else None
+    qb_df = qb_aggressiveness(league_df=league_df)
 
     if qb_df.is_empty():
         return go.Figure()

@@ -12,7 +12,7 @@ from src.league import get_league_info
 from nflreadpy import load_ff_rankings, load_ff_playerids
 
 
-def create_board(league_id: str | None, draft: bool, positional = bool) -> pl.DataFrame:
+def create_board(league_df: pl.DataFrame | None, draft: bool, positional = bool) -> pl.DataFrame:
     """
     Creates a full player ranking board for all positions.
 
@@ -22,7 +22,7 @@ def create_board(league_id: str | None, draft: bool, positional = bool) -> pl.Da
     3. A weekly projections board with in-season weekly ECR and projections.
 
     Args:
-        league_id (str, optional): The Sleeper league ID for ownership information. If None, no owners are added.
+        league_df (pl.DataFrame | None): A DataFrame containing league ownership data from get_league_info(). If None, no owners are added.
         draft (bool): If True, creates a dynasty draft board.
                       If False, creates a weekly projections board.
         positional (bool): If True, creates a dynasty positional ranking board.
@@ -92,11 +92,12 @@ def create_board(league_id: str | None, draft: bool, positional = bool) -> pl.Da
             'r2p_pts': 'Proj. Points'
         })
 
-    # Add league ownership data
-    board_df = add_owners(league_id, board_df)
+        # Filter out players with low projected points.
+        board_df = board_df.filter(pl.col('Proj. Points') >= 1)
 
-    # Drop duplicate players generated from add_owners join
-    board_df = board_df.unique(subset=['fantasypros_id'], maintain_order=True)
+
+    # Add league ownership data
+    board_df = add_owners(league_df, board_df)
 
     return board_df
 
@@ -122,25 +123,22 @@ def add_ages(board_df: pl.DataFrame) -> pl.DataFrame:
 
     return board_df
 
-def add_owners(league_id: str | None, board_df: pl.DataFrame) -> pl.DataFrame:
+def add_owners(league_df: pl.DataFrame | None, board_df: pl.DataFrame) -> pl.DataFrame:
     """
     Adds an "Owner" column based on league roster data to the player board.
 
     Args:
-        league_id (str): The Sleeper league ID.
+        league_df (pl.DataFrame | None): A DataFrame containing league ownership data from get_league_info().
         board_df (pl.DataFrame): The player board to add owners to.
 
     Returns:
         pl.DataFrame: The board with an 'Owner' column added.
     """
 
-    if not league_id:
+    if league_df is None or league_df.is_empty():
         # If no league_id, add placeholder Owner column.
         board_df = board_df.with_columns(pl.lit('N/A').alias('Owner'))
         return board_df
-
-    # Get league roster data
-    league_df = get_league_info(league_id)
 
     if 'fantasypros_id' in board_df.columns:
         # Create a mapping from fantasypros_ids to owner_name.
@@ -150,6 +148,9 @@ def add_owners(league_id: str | None, board_df: pl.DataFrame) -> pl.DataFrame:
         # Join owner_map to the player board.
         board_df = board_df.join(owner_map, on='fantasypros_id', how='left')
 
+        # Drop duplicate players generated from join.
+        board_df = board_df.unique(subset=['fantasypros_id'], maintain_order=True)
+
     elif 'gsis_id' in board_df.columns:
         # Create a mapping from gsis_ids to owner_name.
         owner_map = league_df.select(['owner_name', 'gsis_ids']).explode('gsis_ids')
@@ -158,8 +159,13 @@ def add_owners(league_id: str | None, board_df: pl.DataFrame) -> pl.DataFrame:
         # Join owner_map to the player board.
         board_df = board_df.join(owner_map, on='gsis_id', how='left')
 
+        # Drop duplicate players generated from join.
+        board_df = board_df.unique(subset=['gsis_id'], maintain_order=True)
+
     # Fill in null values.
     board_df = board_df.with_columns(pl.col('Owner').fill_null('Free Agent'))
+
+
 
     return board_df
 
@@ -168,5 +174,6 @@ if __name__ == '__main__':
     pl.Config(tbl_rows=-1, tbl_cols=-1)
 
     league_id = input('Enter Sleeper platform league number (This is found in the sleeper url):')
-    board_df = create_board(league_id, draft=True, positional=False)
+    league_df = get_league_info(league_id)
+    board_df = create_board(league_df, draft=True, positional=False)
     print(board_df)

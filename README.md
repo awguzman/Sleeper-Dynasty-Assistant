@@ -1,6 +1,6 @@
 # Sleeper Dynasty Assistant
 
-An interactive web dashboard for your Sleeper-based dynasty and in-season fantasy football leagues. This application 
+An interactive web dashboard for your Sleeper.com-based dynasty fantasy football leagues. This application 
 fetches live data from [nflreadpy](https://github.com/nflverse/nflreadpy) and integrates it with your specific league's 
 rosters via [Sleeper.com API](https://docs.sleeper.com/).
 

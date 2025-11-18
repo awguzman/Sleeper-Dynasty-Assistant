@@ -7,7 +7,7 @@ import polars as pl
 from nflreadpy import get_current_season, load_nextgen_stats, load_player_stats
 from src.boards import add_owners
 
-def receiving_share(league_id: str | None) -> pl.DataFrame:
+def receiving_share(league_df: pl.DataFrame | None) -> pl.DataFrame:
     """
     Retrieves receiving share metrics (Target Share, Air Yards Share, WOPR) for wide receivers.
 
@@ -15,7 +15,7 @@ def receiving_share(league_id: str | None) -> pl.DataFrame:
     and adds league ownership information if a league_id is provided.
 
     Args:
-        league_id (str | None): The Sleeper league ID, used to add ownership info.
+        league_df: The Sleeper league data used to add ownership info.
                                 If None, ownership data will not be added.
 
     Returns:
@@ -32,13 +32,13 @@ def receiving_share(league_id: str | None) -> pl.DataFrame:
     share_df = share_df.rename({'player_id': 'gsis_id', 'player_display_name': 'Player', 'target_share': 'Target Share',
                                 'air_yards_share': 'Air Yards Share', 'wopr': 'WOPR'})
 
-    # Add ownership information if a league_id is provided.
-    share_df = add_owners(league_id, share_df)
+    # Add ownership information if a league_df is provided.
+    share_df = add_owners(league_df, share_df)
 
     return share_df
 
 
-def stacked_box_efficiency(league_id: str | None) -> pl.DataFrame:
+def stacked_box_efficiency(league_df: pl.DataFrame | None) -> pl.DataFrame:
     """
     Retrieves rushing efficiency data vs stacked boxes (8 or more players)
 
@@ -46,7 +46,7 @@ def stacked_box_efficiency(league_id: str | None) -> pl.DataFrame:
     and adds league ownership information if a league_id is provided.
 
     Args:
-        league_id (str | None): The Sleeper league ID, used to add ownership info.
+        league_df: The Sleeper league ID, used to add ownership info.
                                 If None, ownership data will not be added.
 
     Returns:
@@ -70,17 +70,17 @@ def stacked_box_efficiency(league_id: str | None) -> pl.DataFrame:
                             'rush_yards_over_expected_per_att': 'Rush Yards over Expected per Attempt',
                             'rush_attempts': 'Rush Attempts'})
 
-    box_df = add_owners(league_id, box_df)
+    box_df = add_owners(league_df, box_df)
 
     return box_df
 
 
-def receiver_separation(league_id: str | None) -> pl.DataFrame:
+def receiver_separation(league_df: pl.DataFrame | None) -> pl.DataFrame:
     """
     Retrieves receiver separation vs. cushion data from Next Gen Stats.
 
     Args:
-        league_id (str | None): The Sleeper league ID, used to add ownership info.
+        league_df: The Sleeper league data used to add ownership info.
 
     Returns:
         pl.DataFrame: A DataFrame containing separation and cushion data for receivers.
@@ -108,17 +108,17 @@ def receiver_separation(league_id: str | None) -> pl.DataFrame:
     })
 
     # Add ownership information
-    separation_df = add_owners(league_id, separation_df)
+    separation_df = add_owners(league_df, separation_df)
 
     return separation_df
 
 
-def qb_aggressiveness(league_id: str | None) -> pl.DataFrame:
+def qb_aggressiveness(league_df: pl.DataFrame | None) -> pl.DataFrame:
     """
     Retrieves QB playstyle data (aggressiveness vs. efficiency) from Next Gen Stats.
 
     Args:
-        league_id (str | None): The Sleeper league ID, used to add ownership info.
+        league_df: The Sleeper league data used to add ownership info.
 
     Returns:
         pl.DataFrame: A DataFrame containing QB playstyle data.
@@ -148,14 +148,6 @@ def qb_aggressiveness(league_id: str | None) -> pl.DataFrame:
     })
 
     # Add ownership information
-    passing_df = add_owners(league_id, passing_df)
+    passing_df = add_owners(league_df, passing_df)
 
     return passing_df
-
-
-if __name__ == '__main__':
-    # This block is for standalone testing and debugging of this module.
-    #print(receiving_share(league_id = None))
-    #print(stacked_box_efficiency(league_id = None))
-    #print(receiver_separation(league_id=None))
-    print(qb_aggressiveness(league_id=None))

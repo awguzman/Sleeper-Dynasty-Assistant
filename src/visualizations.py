@@ -524,7 +524,7 @@ def create_qb_playstyle_chart(qb_df: pl.DataFrame, user_name: str | None = None)
         color='Status',
         color_discrete_map=color_map,
         custom_data=['Player', 'Owner', 'attempts'],
-        title="QB Playstyle: Aggressiveness vs. Efficiency"
+        title="Passing Aggressiveness Versus Completion Efficiency"
     )
 
     # --- Add Quadrant Lines and Annotations ---
@@ -575,11 +575,3 @@ def create_qb_playstyle_chart(qb_df: pl.DataFrame, user_name: str | None = None)
     )
 
     return fig
-
-
-if __name__ == '__main__':
-    pl.Config(tbl_rows=-1, tbl_cols=-1)
-
-    from advanced_stats import qb_aggressiveness
-    qb_df = qb_aggressiveness(league_id = None)
-    create_qb_playstyle_chart(qb_df, user_name=None).show()

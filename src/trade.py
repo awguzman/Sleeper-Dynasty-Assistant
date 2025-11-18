@@ -11,7 +11,7 @@ import math
 from nflreadpy import load_ff_rankings
 from src.boards import add_ages, add_owners
 
-def create_trade_values(board_df: pl.DataFrame, league_id: str | None, inseason: bool = False) -> pl.DataFrame:
+def create_trade_values(board_df: pl.DataFrame, inseason: bool = False) -> pl.DataFrame:
     """
     Creates a trade value board.
 
@@ -20,7 +20,6 @@ def create_trade_values(board_df: pl.DataFrame, league_id: str | None, inseason:
 
     Args:
         board_df (pl.DataFrame): The input player board, expected to have ECR data.
-        league_id (str | None): The Sleeper league ID, used to add ownership info.
         inseason (bool, optional): Flag for future use to distinguish between dynasty and in-season logic. Defaults to False.
 
     Returns:
@@ -63,13 +62,3 @@ def create_trade_values(board_df: pl.DataFrame, league_id: str | None, inseason:
     values_df = values_df.cast({'Value': pl.Int64})
 
     return values_df.select(['fantasypros_id', 'Player', 'pos', 'Age', 'Value', 'Owner'])
-
-
-if __name__ == '__main__':
-    pl.Config(tbl_rows=-1, tbl_cols=-1)
-
-    from src.boards import create_board
-    league_id = input('Enter Sleeper platform league number (This is found in the sleeper url):')
-    rank_df = create_board(league_id, draft=True, positional=False)
-    trade_df = create_trade_values(rank_df, league_id, inseason=False)
-    print(trade_df)
