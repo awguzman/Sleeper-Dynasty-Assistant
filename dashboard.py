@@ -17,8 +17,8 @@ from src.boards import create_board
 from src.league import get_league_info
 from src.tiers import create_tiers
 from src.trade import create_trade_values
-from src.efficiency import compute_efficiency
-from src.advanced_stats import receiving_share, stacked_box_efficiency, receiver_separation, qb_aggressiveness
+# from src.efficiency import compute_efficiency
+from src.advanced_stats import compute_efficiency, receiving_share, stacked_box_efficiency, receiver_separation, qb_aggressiveness
 from src.visualizations import (create_tier_chart, create_efficiency_chart,  create_share_chart, create_box_chart,
                                 create_separation_chart, create_qb_playstyle_chart)
 
@@ -291,37 +291,6 @@ app.layout = html.Div([
                     outdated following the first week of play.
                     """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
                 ]),
-                # --- Offseason Efficiency Tab ---
-                dcc.Tab(label='Last Season Efficiency', value='offseason-efficiency', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
-                    html.Br(),
-                    html.Div([
-                        html.Label("Position: ", style={'margin-right': '20px'}),
-                        dcc.RadioItems(
-                            id='position-offseason-efficiency-selection',
-                            options=[
-                                {'label': 'QB', 'value': 'QB'},
-                                {'label': 'RB', 'value': 'RB'},
-                                {'label': 'WR', 'value': 'WR'},
-                                {'label': 'TE', 'value': 'TE'}
-                            ],
-                            value='RB',  # Default value
-                            inline=True,
-                            labelStyle={'margin-right': '20px'}
-                        ),
-                    ], style={'display': 'flex', 'align-items': 'center', 'padding': '0px 25px'}),
-                    html.Br(),
-                    dcc.Loading(
-                        id='loading-offseason-efficiency-chart',
-                        type='circle',
-                        children=dcc.Graph(id='offseason-efficiency-chart')
-                    ),
-                    html.Hr(),
-                    dcc.Markdown("""
-                        This chart plots a player's actual fantasy points vs. their expected points based on usage for the entire season.
-                        *   **Players above the line** were efficient with their fantasy production and scored more than expected (potential regression candidates).
-                        *   **Players below the line** were inefficient and scored less than expected.
-                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
-                ]),
             ]),
         ]),
         # --- Top Level Tab: In-Season Tools ---
@@ -454,37 +423,6 @@ app.layout = html.Div([
                     """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'}
                     ),
                 ]),
-                # --- Weekly Efficiency Tab ---
-                dcc.Tab(label='Fantasy Efficiency', value='weekly-efficiency', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
-                    html.Br(),
-                    html.Div([
-                        html.Label("Position: ", style={'margin-right': '20px'}),
-                        dcc.RadioItems(
-                            id='position-weekly-efficiency-selection',
-                            options=[
-                                {'label': 'QB', 'value': 'QB'},
-                                {'label': 'RB', 'value': 'RB'},
-                                {'label': 'WR', 'value': 'WR'},
-                                {'label': 'TE', 'value': 'TE'}
-                            ],
-                            value='RB',  # Default value
-                            inline=True,
-                            labelStyle={'margin-right': '20px'}
-                        ),
-                    ], style={'display': 'flex', 'align-items': 'center', 'padding': '0px 25px'}),
-                    html.Br(),
-                    dcc.Loading(
-                        id='loading-weekly-efficiency-chart',
-                        type='circle',
-                        children=dcc.Graph(id='weekly-efficiency-chart')
-                    ),
-                    html.Hr(),
-                    dcc.Markdown("""
-                        This chart plots a player's actual fantasy points vs. their expected points based on usage so far this season.
-                        *   **Players above the line** were efficient with their fantasy production and scored more than expected.
-                        *   **Players below the line** were inefficient and scored less than expected.
-                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
-                ]),
             ]),
         ]),
 
@@ -492,6 +430,38 @@ app.layout = html.Div([
         dcc.Tab(label='Advanced Stats', className='custom-top-tab', selected_className='custom-top-tab-selected', children=[
                 # --- Nested Tabs for parent In-Season Tools tab
                 dcc.Tabs(className='nested-tabs-container', children=[
+                    # --- Weekly Efficiency Tab ---
+                    dcc.Tab(label='Fantasy Efficiency', value='efficiency', className='custom-nested-tab',
+                            selected_className='custom-nested-tab-selected', children=[
+                            html.Br(),
+                            html.Div([
+                                html.Label("Position: ", style={'margin-right': '20px'}),
+                                dcc.RadioItems(
+                                    id='position-efficiency-selection',
+                                    options=[
+                                        {'label': 'QB', 'value': 'QB'},
+                                        {'label': 'RB', 'value': 'RB'},
+                                        {'label': 'WR', 'value': 'WR'},
+                                        {'label': 'TE', 'value': 'TE'}
+                                    ],
+                                    value='RB',  # Default value
+                                    inline=True,
+                                    labelStyle={'margin-right': '20px'}
+                                ),
+                            ], style={'display': 'flex', 'align-items': 'center', 'padding': '0px 25px'}),
+                            html.Br(),
+                            dcc.Loading(
+                                id='loading-efficiency-chart',
+                                type='circle',
+                                children=dcc.Graph(id='efficiency-chart')
+                            ),
+                            html.Hr(),
+                            dcc.Markdown("""
+        This chart plots a player's actual fantasy points vs. their expected points based on usage.
+        *   **Players above the line** were efficient with their fantasy production and scored more than expected (possible regression candidate).
+        *   **Players below the line** were inefficient and scored less than expected.
+    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
+                        ]),
                     # --- Receiving Share tab ---
                     dcc.Tab(label='Receiving Share', className='custom-nested-tab',
                             selected_className='custom-nested-tab-selected', children=[
@@ -951,24 +921,24 @@ def update_trade_value_tables(draft_data, owner_name, league_data):
             te_data, te_columns, styles, styles, styles, styles)
 
 
-# --- Callback to Update Offseason Efficiency Chart ---
+# --- Callback to Update Efficiency Chart ---
 @app.callback(
-    Output('offseason-efficiency-chart', 'figure'),
+    Output('efficiency-chart', 'figure'),
     [
         Input('owner-name-dropdown', 'value'),
-        Input('position-offseason-efficiency-selection', 'value')
+        Input('position-efficiency-selection', 'value')
     ],
     [State('league-info-store', 'data')]
 )
-def update_offseason_efficiency_chart(owner_name, position, league_data):
+def update_efficiency_chart(owner_name, position, league_data):
     """
-    Computes full-season player efficiency and generates the scatter plot visualization.
+    Computes player efficiency and generates the scatter plot visualization.
     """
     if not position:
         return go.Figure()
 
     league_df = pl.read_json(io.StringIO(league_data)) if league_data else None
-    efficiency_df = compute_efficiency(league_df=league_df, offseason=True)
+    efficiency_df = compute_efficiency(league_df=league_df)
 
     if efficiency_df.is_empty():
         return go.Figure()
@@ -979,31 +949,6 @@ def update_offseason_efficiency_chart(owner_name, position, league_data):
     # Generate the Plotly figure, passing the owner_name for highlighting
     return create_efficiency_chart(pos_df, user_name=owner_name)
 
-
-# --- Callback to Update Weekly Efficiency Chart ---
-@app.callback(
-    Output('weekly-efficiency-chart', 'figure'),
-    [
-        Input('owner-name-dropdown', 'value'),
-        Input('position-weekly-efficiency-selection', 'value')
-    ],
-    [State('league-info-store', 'data')]
-)
-def update_weekly_efficiency_chart(owner_name, position, league_data):
-    """
-    Computes previous-week player efficiency and generates the scatter plot visualization.
-    """
-    if not position:
-        return go.Figure()
-
-    league_df = pl.read_json(io.StringIO(league_data)) if league_data else None
-    efficiency_df = compute_efficiency(league_df=league_df, offseason=False)
-
-    if efficiency_df.is_empty():
-        return go.Figure()
-
-    pos_df = efficiency_df.filter(pl.col('pos') == position)
-    return create_efficiency_chart(pos_df, user_name=owner_name)
 
 # --- Callback to Update Receiving Share Chart ---
 @app.callback(

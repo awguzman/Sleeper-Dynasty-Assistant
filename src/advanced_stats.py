@@ -4,8 +4,44 @@ This module provides functions for calculating and retrieving advanced player/te
 
 import polars as pl
 
-from nflreadpy import get_current_season, load_nextgen_stats, load_player_stats
+from nflreadpy import get_current_season, get_current_week, load_nextgen_stats, load_player_stats, load_ff_opportunity
 from src.boards import add_owners
+
+def compute_efficiency(league_df: pl.DataFrame | None) -> pl.DataFrame:
+    """
+    Computes player fantasy production efficiency data
+
+    This function loads player opportunity data, filters it, and aggregates it based on
+    whether the analysis is being performed during season.
+
+    Args:
+        league_df (str, optional): Sleeper League data for ownership filtering.
+
+    Returns:
+        pl.DataFrame: A DataFrame containing player efficiency metrics.
+    """
+    season = get_current_season(roster=True) # This updates right before the start of week 1.
+    opp_features = ['season', 'week', 'player_id', 'full_name', 'position', 'total_fantasy_points', 'total_fantasy_points_exp']
+
+    # Load player opportunity data for the selected season.
+    opp_df = load_ff_opportunity(seasons=[season], stat_type='weekly', model_version='latest')
+    opp_df = opp_df.select(opp_features)
+
+    # Group by player and sum the points over all weeks of the season.
+    opp_df = opp_df.group_by(['season', 'player_id', 'full_name', 'position']).agg([
+        pl.col('total_fantasy_points').sum(),
+        pl.col('total_fantasy_points_exp').sum()
+    ]).filter(pl.col('total_fantasy_points') >= get_current_week())  # Limit low participation players
+
+    # Compute efficiency as difference between actual and expected points.
+    opp_df = opp_df.with_columns((pl.col('total_fantasy_points_exp') - pl.col('total_fantasy_points')).round(2).alias('Efficiency'))
+
+    opp_df = opp_df.rename({'player_id': 'gsis_id', 'full_name': 'Player', 'position': 'pos', 'total_fantasy_points': 'Actual Points', 'total_fantasy_points_exp': 'Expected Points'})
+
+    opp_df = add_owners(league_df, opp_df)
+
+    return opp_df
+
 
 def receiving_share(league_df: pl.DataFrame | None) -> pl.DataFrame:
     """

@@ -8,8 +8,6 @@ import plotly.express as px
 
 from nflreadpy import get_current_week
 
-from src.advanced_stats import receiver_separation
-
 
 def create_tier_chart(board_df: pl.DataFrame, user_name: str | None) -> go.Figure:
     """
