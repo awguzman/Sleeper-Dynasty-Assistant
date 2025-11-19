@@ -93,7 +93,7 @@ def create_board(league_df: pl.DataFrame | None, draft: bool, positional = bool)
         })
 
         # Filter out players with low projected points.
-        board_df = board_df.filter(pl.col('Proj. Points') >= 1)
+        # board_df = board_df.filter(pl.col('Proj. Points') >= 1)
 
 
     # Add league ownership data
@@ -164,7 +164,6 @@ def add_owners(league_df: pl.DataFrame | None, board_df: pl.DataFrame) -> pl.Dat
 
     # Fill in null values.
     board_df = board_df.with_columns(pl.col('Owner').fill_null('Free Agent'))
-
 
 
     return board_df

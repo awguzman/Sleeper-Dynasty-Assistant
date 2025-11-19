@@ -85,6 +85,89 @@ app.layout = html.Div([
 
     # --- Main Tabbed Interface ---
     dcc.Tabs(className='top-tabs-container', children=[
+        # --- Top Level Tab: League Tools ---
+        dcc.Tab(label='League Tools', className='custom-top-tab', selected_className='custom-top-tab-selected', children=[
+            # --- Nested Tabs for parent League Tools tab
+            dcc.Tabs(className='nested-tabs-container', children=[
+                # --- Overview Tab ---
+                dcc.Tab(label='Overview', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
+
+                ]),
+                # --- Trade Values tab ---
+                dcc.Tab(label='Trade Values', className='custom-nested-tab',
+                        selected_className='custom-nested-tab-selected', children=[
+                        html.Br(),
+                        # Container for side-by-side tables
+                        html.Div(children=[
+                            # QB Table
+                            html.Div(children=[
+                                html.H4("Quarterback", style={'textAlign': 'center'}),
+                                dcc.Loading(type='circle', children=dash_table.DataTable(
+                                    id='trade-value-table-qb',
+                                    style_table={'height': '600px', 'overflowY': 'auto'},
+                                    # Fix table height and add scroll bar.
+                                    style_header={'fontWeight': 'bold'},
+                                    style_cell={'textAlign': 'left', 'padding': '5px'},
+                                    style_cell_conditional=[
+                                        {'if': {'column_id': 'Player'}, 'width': '50%'},
+                                        {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
+                                    ]
+                                )),
+                            ], style={'flex': 1, 'padding': '0px 10px'}),
+                            # RB Table
+                            html.Div([
+                                html.H4("Running Back", style={'textAlign': 'center'}),
+                                dcc.Loading(type='circle', children=dash_table.DataTable(
+                                    id='trade-value-table-rb',
+                                    style_table={'height': '600px', 'overflowY': 'auto'},
+                                    # Fix table height and add scroll bar.
+                                    style_header={'fontWeight': 'bold'},
+                                    style_cell={'textAlign': 'left', 'padding': '5px'},
+                                    style_cell_conditional=[
+                                        {'if': {'column_id': 'Player'}, 'width': '50%'},
+                                        {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
+                                    ]
+                                )),
+                            ], style={'flex': 1, 'padding': '0px 10px'}),
+                            # WR Table
+                            html.Div([
+                                html.H4("Wide Receiver", style={'textAlign': 'center'}),
+                                dcc.Loading(type='circle', children=dash_table.DataTable(
+                                    id='trade-value-table-wr',
+                                    style_table={'height': '600px', 'overflowY': 'auto'},
+                                    # Fix table height and add scroll bar.
+                                    style_header={'fontWeight': 'bold'},
+                                    style_cell={'textAlign': 'left', 'padding': '5px'},
+                                    style_cell_conditional=[
+                                        {'if': {'column_id': 'Player'}, 'width': '50%'},
+                                        {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
+                                    ]
+                                )),
+                            ], style={'flex': 1, 'padding': '0px 10px'}),
+                            # TE Table
+                            html.Div([
+                                html.H4("Tight End", style={'textAlign': 'center'}),
+                                dcc.Loading(type='circle', children=dash_table.DataTable(
+                                    id='trade-value-table-te',
+                                    style_table={'height': '600px', 'overflowY': 'auto'},
+                                    # Fix table height and add scroll bar.
+                                    style_header={'fontWeight': 'bold'},
+                                    style_cell={'textAlign': 'left', 'padding': '5px'},
+                                    style_cell_conditional=[
+                                        {'if': {'column_id': 'Player'}, 'width': '50%'},
+                                        {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
+                                    ]
+                                )),
+                            ], style={'flex': 1, 'padding': '0px 10px'}),
+                        ], style={'display': 'flex', 'flexDirection': 'row', 'padding': '0px 25px'}),
+                        html.Hr(),
+                        dcc.Markdown("""
+                    Trade values are based on overall dynasty ECR values. They will (possibly over)emphasize long term value
+                    over short-term gain.
+                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
+                    ]),
+            ]),
+        ]),
         # --- Top Level Tab: Draft Tools ---
         dcc.Tab(label='Draft Tools', className='custom-top-tab', selected_className='custom-top-tab-selected', children=[
             # --- Nested Tabs for parent Draft Tools tab
@@ -216,80 +299,6 @@ app.layout = html.Div([
                     outdated following the first week of play.
                     """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
 
-                ]),
-                # --- Offseason Trade Values tab ---
-                dcc.Tab(label='Dynasty Trade Values', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
-                    html.Br(),
-                    # Container for side-by-side tables
-                    html.Div(children=[
-                        # QB Table
-                        html.Div(children=[
-                            html.H4("Quarterback", style={'textAlign': 'center'}),
-                            dcc.Loading(type='circle', children=dash_table.DataTable(
-                                id='trade-value-table-qb',
-                                style_table={'height': '600px', 'overflowY': 'auto'}, # Fix table height and add scroll bar.
-                                style_header={'fontWeight': 'bold'},
-                                style_cell={'textAlign': 'left', 'padding': '5px'},
-                                style_cell_conditional=[
-                                    {'if': {'column_id': 'Player'}, 'width': '50%'},
-                                    {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
-                                ]
-                            )),
-                        ], style={'flex': 1, 'padding': '0px 10px'}),
-                        # RB Table
-                        html.Div([
-                            html.H4("Running Back", style={'textAlign': 'center'}),
-                            dcc.Loading(type='circle', children=dash_table.DataTable(
-                                id='trade-value-table-rb',
-                                style_table={'height': '600px', 'overflowY': 'auto'},
-                                # Fix table height and add scroll bar.
-                                style_header={'fontWeight': 'bold'},
-                                style_cell={'textAlign': 'left', 'padding': '5px'},
-                                style_cell_conditional=[
-                                    {'if': {'column_id': 'Player'}, 'width': '50%'},
-                                    {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
-                                ]
-                            )),
-                        ], style={'flex': 1, 'padding': '0px 10px'}),
-                        # WR Table
-                        html.Div([
-                            html.H4("Wide Receiver", style={'textAlign': 'center'}),
-                            dcc.Loading(type='circle', children=dash_table.DataTable(
-                                id='trade-value-table-wr',
-                                style_table={'height': '600px', 'overflowY': 'auto'},
-                                # Fix table height and add scroll bar.
-                                style_header={'fontWeight': 'bold'},
-                                style_cell={'textAlign': 'left', 'padding': '5px'},
-                                style_cell_conditional=[
-                                    {'if': {'column_id': 'Player'}, 'width': '50%'},
-                                    {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
-                                ]
-                            )),
-                        ], style={'flex': 1, 'padding': '0px 10px'}),
-                        # TE Table
-                        html.Div([
-                            html.H4("Tight End", style={'textAlign': 'center'}),
-                            dcc.Loading(type='circle', children=dash_table.DataTable(
-                                id='trade-value-table-te',
-                                style_table={'height': '600px', 'overflowY': 'auto'},
-                                # Fix table height and add scroll bar.
-                                style_header={'fontWeight': 'bold'},
-                                style_cell={'textAlign': 'left', 'padding': '5px'},
-                                style_cell_conditional=[
-                                    {'if': {'column_id': 'Player'}, 'width': '50%'},
-                                    {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
-                                ]
-                            )),
-                        ], style={'flex': 1, 'padding': '0px 10px'}),
-                    ], style={'display': 'flex', 'flexDirection': 'row', 'padding': '0px 25px'}),
-                html.Hr(),
-                dcc.Markdown("""
-                    Trade values are based on overall dynasty ECR values. They will (possibly over)emphasize long term value
-                    over short-term gain.
-                    
-                    Note: This does not take into consideration in-season performance. It should be considered 
-                    outdated following the first week of play.
-                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
                 ]),
             ]),
         ]),
@@ -425,7 +434,6 @@ app.layout = html.Div([
                 ]),
             ]),
         ]),
-
         # --- Top Level Tab: Advanced Stats ---
         dcc.Tab(label='Advanced Stats', className='custom-top-tab', selected_className='custom-top-tab-selected', children=[
                 # --- Nested Tabs for parent In-Season Tools tab
@@ -888,7 +896,7 @@ def update_trade_value_tables(draft_data, owner_name, league_data):
     board_df = pl.read_json(io.StringIO(draft_data))
 
     # Get trade values
-    values_df = create_trade_values(board_df, inseason=False)
+    values_df = create_trade_values(board_df)
 
     # --- Generate Conditional Styling ---
     styles = []
