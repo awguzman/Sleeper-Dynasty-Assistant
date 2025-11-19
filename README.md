@@ -18,18 +18,20 @@ The dashboard is organized into three main sections: **Draft Tools**, **In-Seaso
 - **High-Performance Backend**: Utilizes `Polars` for fast data processing and `Dash` for efficient data caching.
 - **Live Data**: Player rankings and projections are fetched from `nflreadpy`, ensuring the data is up-to-date.
 
+### League Tools
+- **Overview**: Under Construction
+- **Trade Values**: Side-by-side, scrollable tables displaying dynasty trade values for each position.
+
 ### Draft Tools
 - **Dynasty Draft Board**: A sortable and filterable table showing dynasty rankings (ECR), player age, and ownership status.
 - **Draft Tiers**: An interactive visualization that groups players into statistically distinct tiers based on their ECR ranks. This helps identify value drop-offs at each position.
-- **Dynasty Trade Values**: Side-by-side, scrollable tables displaying player trade values for each position.
-- **Season Efficiency**: A scatter plot showing actual vs. expected fantasy points for a player over the previous season. Used to spot scoring regression candidates for the next season.
 
 ### In-Season Tools
-- **Weekly Projections**: A table displaying weekly positional rankings, ECR, and start/sit grades to help with lineup decisions.
+- **Weekly Projections**: A table displaying weekly positional rankings, ECR, and start/sit grades to help with weekly lineup decisions.
 - **Weekly Tiers**: A similar tier chart to above tailored for weekly rankings.
-- **Efficiency**: A scatter plot showing actual vs. expected fantasy points for the season so far. Used to spot efficiency trends throughout the season.
 
 ### Advanced Stats
+- **Fantasy Efficiency**: A scatter plot showing actual vs. expected fantasy points for the season so far. Used to spot efficiency trends throughout the season.
 - **Receiving Share**: A scatter plot visualizing a receiver's role by comparing their share of team targets vs. their share of team air yards.
 - **Receiver Separation**: An interactive chart that plots a receiver's ability to get open (Separation) against the respect defenses give them (Cushion).
 - **Rushing Vs. Stacked Box**: A bubble chart that identifies a running back's pure talent by comparing their efficiency (RYOE) against the difficulty of their situation (Stacked Box %).
