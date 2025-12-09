@@ -181,9 +181,9 @@ def create_efficiency_chart(efficiency_df: pl.DataFrame, user_name: str | None =
     return fig
 
 
-def create_share_chart(share_df: pl.DataFrame, user_name: str | None = None) -> go.Figure:
+def create_rec_share_chart(share_df: pl.DataFrame, user_name: str | None = None) -> go.Figure:
     """
-        Creates an interactive scatter plot showing receiver target and air yard share statistics.
+        Creates an interactive scatter plot showing target and production share statistics.
 
         Args:
             share_df (pl.DataFrame): A DataFrame containing player receiving share data. Should originate from src.advanced_stats.receiving_share().
@@ -197,7 +197,7 @@ def create_share_chart(share_df: pl.DataFrame, user_name: str | None = None) -> 
         return go.Figure()
 
     # Filter out low share players.
-    share_df = share_df.filter((pl.col('Air Yards Share') >= 0.05) | (pl.col('Target Share') >= 0.05))
+    share_df = share_df.filter((pl.col('WOPR') >= 0.1))
 
     # Add an ownership status column for dynamic coloring
     if user_name and 'Owner' in share_df.columns:
@@ -222,16 +222,16 @@ def create_share_chart(share_df: pl.DataFrame, user_name: str | None = None) -> 
     # Create the scatter plot
     fig = px.scatter(
         plot_df,
-        y='Air Yards Share',
-        x='Target Share',
+        x='WOPR',
+        y='Receiving Yard Share',
         color='Status',
         color_discrete_map=color_map,
-        custom_data=['Player', 'WOPR', 'Owner'],
-        title="Volume of Targets Versus Quality of Targets"
+        custom_data=['Player', 'Owner'],
+        title="Quality of Receiving Targets Vs. Share of Receiving Yards"
     )
 
     # --- Calculate and Add Linear Regression ---
-    x_col, y_col = 'Target Share', 'Air Yards Share'
+    x_col, y_col = 'WOPR', 'Receiving Yard Share'
     x_mean = share_df[x_col].mean()
     y_mean = share_df[y_col].mean()
     xy_cov = pl.cov(share_df[x_col], share_df[y_col], eager=True).item()
@@ -255,8 +255,8 @@ def create_share_chart(share_df: pl.DataFrame, user_name: str | None = None) -> 
 
     fig.update_layout(
         height=750,
-        yaxis_title="Air Yard Share",
-        xaxis_title="Target Share",
+        yaxis_title="Receiving Yard Share",
+        xaxis_title="Weighted Opportunity Rating (WOPR)",
         hovermode="closest",
         font_color='black',
         legend_title_text='Ownership',
@@ -269,37 +269,36 @@ def create_share_chart(share_df: pl.DataFrame, user_name: str | None = None) -> 
     fig.update_traces(
         hovertemplate=(
                 "<b>%{customdata[0]}</b><br>" +
-                "Owner: %{customdata[2]}<br>" +
-                "Target Share: %{x:.2f}<br>" +
-                "Air Yard Share: %{y:.2f}<br>" +
-                "WOPR: %{customdata[1]:.2f}" +
+                "Owner: %{customdata[1]}<br>" +
+                "WOPR: %{x:.2f}<br>" +
+                "Rec Yard Share: %{y:.2f}<br>" +
                 "<extra></extra>"  # Hides the secondary box
         )
     )
 
     return fig
 
-
-def create_box_chart(box_df: pl.DataFrame, user_name: str | None = None) -> go.Figure:
+def create_rush_share_chart(share_df: pl.DataFrame, user_name: str | None = None) -> go.Figure:
     """
-        Creates an interactive scatter plot showing stacked box rushing efficiency.
+        Creates an interactive scatter plot showing rushing share and rushing production share statistics.
 
         Args:
-            box_df (pl.DataFrame): A DataFrame containing player rushing data. Should originate from src.advanced_stats.stacked_box_efficiency().
+            share_df (pl.DataFrame): A DataFrame containing player rushing share data. Should originate from src.advanced_stats.rushing_share().
             user_name (str, optional): The name of the user to highlight. Players owned by this user will be labeled. Defaults to None.
 
         Returns:
             go.Figure: A Plotly figure object ready to be displayed in a dcc.Graph.
         """
-    if box_df.is_empty():
-        return go.Figure
+    if share_df.is_empty():
+        # Return an empty figure if there's no data
+        return go.Figure()
 
-    # Limit to players who average 5 touches per game.
-    box_df = box_df.filter(pl.col('Rush Attempts') > 5 * get_current_week())
+    # Filter out low share players.
+    share_df = share_df.filter((pl.col('Rushing Attempt Share') >= 0.1))
 
     # Add an ownership status column for dynamic coloring
-    if user_name and 'Owner' in box_df.columns:
-        box_df = box_df.with_columns(
+    if user_name and 'Owner' in share_df.columns:
+        share_df = share_df.with_columns(
             pl.when(pl.col('Owner') == user_name).then(
                 pl.lit(user_name)
             ).when(
@@ -311,62 +310,56 @@ def create_box_chart(box_df: pl.DataFrame, user_name: str | None = None) -> go.F
         )
         color_map = {user_name: '#1100FF', 'Free Agent': '#089E00', 'Owned by Other': '#6c757d'}
     else:
-        box_df = box_df.with_columns(pl.lit('N/A').alias('Status'))
+        share_df = share_df.with_columns(pl.lit('N/A').alias('Status'))
         color_map = {'N/A': '#1100FF'}
 
     # Convert to pandas for Plotly integration
-    plot_df = box_df.to_pandas()
+    plot_df = share_df.to_pandas()
 
     # Create the scatter plot
     fig = px.scatter(
         plot_df,
-        x='Stacked Box Percentage',
-        y='Rush Yards over Expected per Attempt',
-        size='Rush Attempts',  # Bubble size based on rush attempts
+        x='Rushing Attempt Share',
+        y='Rushing Yard Share',
         color='Status',
         color_discrete_map=color_map,
-        custom_data=['Player', 'Owner', 'Rush Attempts'],
-        title="Rushing Efficiency Versus Situational Difficulty"
+        custom_data=['Player', 'Owner'],
+        title="Share of Rushing Attempts Vs. Share of Rushing Yards"
     )
 
-    # Add quadrant lines
-    fig.add_vline(x=box_df['Stacked Box Percentage'].mean(), line_width=1, line_dash="dash", line_color="grey")
-    fig.add_hline(y=0, line_width=1, line_dash="dash", line_color="grey")
+    # --- Calculate and Add Linear Regression ---
+    x_col, y_col = 'Rushing Attempt Share', 'Rushing Yard Share'
+    x_mean = share_df[x_col].mean()
+    y_mean = share_df[y_col].mean()
+    xy_cov = pl.cov(share_df[x_col], share_df[y_col], eager=True).item()
+    x_var = share_df[x_col].var()
 
-    # Set axis ranges
-    x_range = [box_df['Stacked Box Percentage'].min() * 0.9,
-               box_df['Stacked Box Percentage'].max() * 1.1]
-    y_range = [box_df['Rush Yards over Expected per Attempt'].min() * 0.9,
-               box_df['Rush Yards over Expected per Attempt'].max() * 1.1]
+    slope = xy_cov / x_var
+    intercept = y_mean - slope * x_mean
 
-    # Add quadrant labels
-    fig.add_annotation(
-        x=x_range[0], y=y_range[1], text="<b>Good Situation, Good Efficiency</b>",
-        showarrow=False, xanchor='left', yanchor='top', font=dict(color="#555", size=14)
-    )
-    fig.add_annotation(
-        x=x_range[1], y=y_range[1], text="<b>Bad Situation, Good Efficiency</b>",
-        showarrow=False, xanchor='right', yanchor='top', font=dict(color="#555", size=14)
-    )
-    fig.add_annotation(
-        x=x_range[0], y=y_range[0], text="<b>Good Situation, Bad Efficiency</b>",
-        showarrow=False, xanchor='left', yanchor='bottom', font=dict(color="#555", size=14)
-    )
-    fig.add_annotation(
-        x=x_range[1], y=y_range[0], text="<b>Bad Situation, Bad Efficiency</b>",
-        showarrow=False, xanchor='right', yanchor='bottom', font=dict(color="#555", size=14)
+    x0 = share_df.select(x_col).min().item()
+    x1 = share_df.select(x_col).max().item()
+    y0 = slope * x0 + intercept
+    y1 = slope * x1 + intercept
+
+    # Regression Line
+    fig.add_shape(
+        type="line",
+        x0=x0, y0=y0, x1=x1, y1=y1,
+        line=dict(color="grey", width=1, dash="dash"),
+        name="Expected Share"
     )
 
     fig.update_layout(
         height=750,
-        xaxis_title="Stacked Box Percentage",
-        yaxis_title="Rush Yards over Expected per Attempt",
+        yaxis_title="Rushing Yard Share",
+        xaxis_title="Rushing Attempt Share",
         hovermode="closest",
         font_color='black',
         legend_title_text='Ownership',
         # Set axis ranges to give a bit of padding
-        xaxis_range=x_range,
-        yaxis_range=y_range
+        xaxis_range=[share_df[x_col].min() * 0.9, share_df[x_col].max() * 1.1],
+        yaxis_range=[share_df[y_col].min() * 0.9, share_df[y_col].max() * 1.1]
     )
 
     # Customize the hover text.
@@ -374,201 +367,9 @@ def create_box_chart(box_df: pl.DataFrame, user_name: str | None = None) -> go.F
         hovertemplate=(
                 "<b>%{customdata[0]}</b><br>" +
                 "Owner: %{customdata[1]}<br>" +
-                "Stacked Box %: %{x:.2f}<br>" +
-                "RYOE/Att: %{y:.2f}<br>" +
-                "Rush Attempts: %{customdata[2]}" +
+                "Attempt Share: %{x:.2f}<br>" +
+                "Rush Yard Share: %{y:.2f}<br>" +
                 "<extra></extra>"  # Hides the secondary box
-        )
-    )
-
-    return fig
-
-
-def create_separation_chart(separation_df: pl.DataFrame, user_name: str | None = None) -> go.Figure:
-    """
-    Creates an interactive scatter plot showing receiver separation vs. cushion.
-
-    Args:
-        separation_df (pl.DataFrame): A DataFrame with separation and cushion data.
-        user_name (str, optional): The name of the user to highlight.
-
-    Returns:
-        go.Figure: A Plotly figure object.
-    """
-    if separation_df.is_empty():
-        return go.Figure()
-
-    # Limit to players who average at least 3 target per game.
-    separation_df = separation_df.filter(pl.col('targets') >= 3 * get_current_week())
-
-
-    # Add an ownership status column for dynamic coloring
-    if user_name and 'Owner' in separation_df.columns:
-        separation_df = separation_df.with_columns(
-            pl.when(pl.col('Owner') == user_name).then(pl.lit(user_name))
-            .when(pl.col('Owner') == 'Free Agent').then(pl.lit('Free Agent'))
-            .otherwise(pl.lit('Owned by Other')).alias('Status')
-        )
-        color_map = {user_name: '#1100FF', 'Free Agent': '#28a745', 'Owned by Other': '#6c757d'}
-    else:
-        separation_df = separation_df.with_columns(pl.lit('N/A').alias('Status'))
-        color_map = {'N/A': '#1100FF'}
-
-    # Convert to pandas for Plotly integration
-    plot_df = separation_df.to_pandas()
-
-    # Create the scatter plot
-    fig = px.scatter(
-        plot_df,
-        x='Cushion',
-        y='Separation',
-        size='targets',  # Bubble size based on targets
-        color='Status',
-        color_discrete_map=color_map,
-        custom_data=['Player', 'Owner', 'targets'],
-        title="Receiving Separation Versus Cushion Given"
-    )
-
-    # --- Add Quadrant Lines and Annotations ---
-    mean_cushion = separation_df['Cushion'].mean()
-    mean_separation = separation_df['Separation'].mean()
-
-    fig.add_vline(x=mean_cushion, line_width=1, line_dash="dash", line_color="grey")
-    fig.add_hline(y=mean_separation, line_width=1, line_dash="dash", line_color="grey")
-
-    x_range = [separation_df['Cushion'].min() * 0.9, separation_df['Cushion'].max() * 1.1]
-    y_range = [separation_df['Separation'].min() * 0.9, separation_df['Separation'].max() * 1.1]
-
-    # fig.add_annotation(
-    #     x=x_range[1], y=y_range[1], text="<b>Elite Route Runners</b>",
-    #     showarrow=False, xanchor='right', yanchor='top', font=dict(color="#555", size=14)
-    # )
-    fig.add_annotation(
-        x=x_range[0], y=y_range[1], text="<b>Good Route Running</b>",
-        showarrow=False, xanchor='left', yanchor='top', font=dict(color="#555", size=14)
-    )
-    fig.add_annotation(
-        x=x_range[1], y=y_range[0], text="<b>Bad Route Running</b>",
-        showarrow=False, xanchor='right', yanchor='bottom', font=dict(color="#555", size=14)
-    )
-    # fig.add_annotation(
-    #     x=x_range[0], y=y_range[0], text="<b>Struggling to Separate</b>",
-    #     showarrow=False, xanchor='left', yanchor='bottom', font=dict(color="#555", size=14)
-    # )
-
-    fig.update_layout(
-        height=750,
-        xaxis_title="Average Cushion at Snap (Yards)",
-        yaxis_title="Average Separation at Target (Yards)",
-        hovermode="closest",
-        font_color='black',
-        legend_title_text='Ownership',
-        xaxis_range=x_range,
-        yaxis_range=y_range
-    )
-
-    fig.update_traces(
-        hovertemplate=(
-            "<b>%{customdata[0]}</b></br>" +
-            "Owner: %{customdata[1]}<br>" +
-            "Avg. Cushion: %{x:.2f} yds<br>" +
-            "Avg. Separation: %{y:.2f} yds<br>" +
-            "Targets: %{customdata[2]}" +
-            "<extra></extra>"
-        )
-    )
-
-    return fig
-
-
-def create_qb_playstyle_chart(qb_df: pl.DataFrame, user_name: str | None = None) -> go.Figure:
-    """
-    Creates an interactive bubble chart showing QB playstyle (aggressiveness vs. efficiency).
-
-    Args:
-        qb_df (pl.DataFrame): A DataFrame with QB playstyle data. Typically arrives from src.advanced_stats.qb_playstyle().
-        user_name (str, optional): The name of the user to highlight.
-
-    Returns:
-        go.Figure: A Plotly figure object.
-    """
-    if qb_df.is_empty():
-        return go.Figure()
-
-    # Limit to players who average at least 15 pass attempts per game.
-    qb_df = qb_df.filter(pl.col('attempts') >= 15 * get_current_week())
-
-    # Add an ownership status column for dynamic coloring
-    if user_name and 'Owner' in qb_df.columns:
-        qb_df = qb_df.with_columns(
-            pl.when(pl.col('Owner') == user_name).then(pl.lit(user_name))
-            .when(pl.col('Owner') == 'Free Agent').then(pl.lit('Free Agent'))
-            .otherwise(pl.lit('Owned by Other')).alias('Status')
-        )
-        color_map = {user_name: '#1100FF', 'Free Agent': '#089E00', 'Owned by Other': '#6c757d'}
-    else:
-        qb_df = qb_df.with_columns(pl.lit('N/A').alias('Status'))
-        color_map = {'N/A': '#1100FF'}
-
-    # Convert to pandas for Plotly integration
-    plot_df = qb_df.to_pandas()
-
-    # Create the bubble scatter plot
-    fig = px.scatter(
-        plot_df,
-        x='Aggressiveness',
-        y='CPOE',
-        size='attempts',  # Bubble size based on pass attempts
-        color='Status',
-        color_discrete_map=color_map,
-        custom_data=['Player', 'Owner', 'attempts'],
-        title="Passing Aggressiveness Versus Completion Efficiency"
-    )
-
-    # --- Add Quadrant Lines and Annotations ---
-    mean_x = qb_df['Aggressiveness'].mean()
-    mean_y = qb_df['CPOE'].mean()
-
-    fig.add_vline(x=mean_x, line_width=1, line_dash="dash", line_color="grey")
-    fig.add_hline(y=mean_y, line_width=1, line_dash="dash", line_color="grey")
-
-    x_range = [qb_df['Aggressiveness'].min() * 0.95, qb_df['Aggressiveness'].max() * 1.05]
-    y_range = [qb_df['CPOE'].min() * 1.1, qb_df['CPOE'].max() * 1.1]
-
-    fig.add_annotation(
-        x=x_range[0], y=y_range[1], text="<b>Accurate & Conservative</b>",
-        showarrow=False, xanchor='left', yanchor='top', font=dict(color="#555", size=14)
-    )
-    fig.add_annotation(
-        x=x_range[1], y=y_range[1], text="<b>Accurate & Aggressive</b>",
-        showarrow=False, xanchor='right', yanchor='top', font=dict(color="#555", size=14)
-    )
-    # fig.add_annotation(
-    #     x=x_range[0], y=y_range[0], text="<b>Struggling</b>",
-    #     showarrow=False, xanchor='left', yanchor='bottom', font=dict(color="#555", size=14)
-    # )
-    fig.add_annotation(
-        x=x_range[1], y=y_range[0], text="<b>Inaccurate & Aggressive</b>",
-        showarrow=False, xanchor='right', yanchor='bottom', font=dict(color="#555", size=14)
-    )
-
-    fig.update_layout(
-        height=750,
-        xaxis_title="Aggressiveness (% of throws into tight windows)",
-        yaxis_title="Completion % Above Expectation (CPOE)",
-        hovermode="closest",
-        font_color='black',
-        legend_title_text='Ownership'
-    )
-
-    fig.update_traces(
-        hovertemplate=(
-            "<b>%{customdata[0]}</b><br>" +
-            "Owner: %{customdata[1]}<br><br>" +
-            "Aggressiveness: %{x:.2f}%<br>" +
-            "CPOE: %{y:+.2f}<br>" +
-            "Pass Attempts: %{customdata[2]}" +
-            "<extra></extra>"
         )
     )
 

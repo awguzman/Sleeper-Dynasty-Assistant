@@ -33,9 +33,7 @@ The dashboard is organized into three main sections: **Draft Tools**, **In-Seaso
 ### Advanced Stats
 - **Fantasy Efficiency**: A scatter plot showing actual vs. expected fantasy points for the season so far. Used to spot efficiency trends throughout the season.
 - **Receiving Share**: A scatter plot visualizing a receiver's role by comparing their share of team targets vs. their share of team air yards.
-- **Receiver Separation**: An interactive chart that plots a receiver's ability to get open (Separation) against the respect defenses give them (Cushion).
-- **Rushing Vs. Stacked Box**: A bubble chart that identifies a running back's pure talent by comparing their efficiency (RYOE) against the difficulty of their situation (Stacked Box %).
-- **QB Aggressiveness**: A bubble chart that profiles a quarterback's playstyle by comparing their accuracy (CPOE) against their willingness to throw into tight windows (Aggressiveness).
+- **Rushing Separation**: A scatter plot visualizing a running backs opportunity with how well they have converted that opportunity into yards.
 
 ## Packages/Frameworks
 
