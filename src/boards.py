@@ -12,7 +12,7 @@ from src.league import get_league_info
 from nflreadpy import load_ff_rankings, load_ff_playerids
 
 
-def create_board(league_df: pl.DataFrame | None, draft: bool, positional = bool) -> pl.DataFrame:
+def create_board(league_df: pl.DataFrame | None, draft: bool, positional: bool = True) -> pl.DataFrame:
     """
     Creates a full player ranking board for all positions.
 
@@ -37,22 +37,27 @@ def create_board(league_df: pl.DataFrame | None, draft: bool, positional = bool)
         if board_df.is_empty():
             return pl.DataFrame()
 
-        board_columns = ['id', 'player', 'team', 'bye', 'ecr_type', 'pos',
+        board_columns = ['id', 'player', 'team', 'bye', 'page_type', 'ecr_type', 'pos',
                          'ecr', 'best', 'worst', 'sd', 'scrape_date']
         if positional:
             ecr_type = 'dp'  # 'dp' specifies dynasty positional rankings
         else:
             ecr_type = 'do' # 'do' specified dynasty overall rankings
 
-        board_df = board_df[board_columns].filter(pl.col('pos').is_in(['QB', 'RB', 'WR', 'TE']))
+        board_df = board_df.select(board_columns)
+        board_df = board_df.filter(pl.col('pos').is_in(['QB', 'RB', 'WR', 'TE']))
 
-        # Filter for dynasty rankings, but keep all positions.
-        board_df = board_df.filter(pl.col('ecr_type') == ecr_type).drop('ecr_type')
+        # Filter for dynasty rankings.
+        board_df = board_df.filter(pl.col('ecr_type') == ecr_type)
+
+        # Get rid of the defensive rankings for two-way players (e.g. Travis Hunter)
+        board_df = board_df.filter(pl.col('page_type') == 'dynasty-overall')
 
         # Rename columns for a user-friendly final DataFrame.
         board_df = board_df.rename({
             'id': 'fantasypros_id',
             'player': 'Player',
+            'pos': 'Pos',
             'team': 'Team',
             'bye': 'Bye',
             'ecr': 'ECR',
@@ -65,8 +70,10 @@ def create_board(league_df: pl.DataFrame | None, draft: bool, positional = bool)
         board_df = add_ages(board_df)
 
         # Re-select columns to ensure a consistent and logical order for display.
-        board_df = board_df.select(['fantasypros_id', 'Player', 'pos', 'Team', 'Age', 'Bye', 'ECR', 'Best', 'Worst',
+        board_df = board_df.select(['fantasypros_id', 'Player', 'Pos', 'Team', 'Age', 'Bye', 'ECR', 'Best', 'Worst',
                                     'Std', 'scrape_date'])
+
+
 
     else:
         # --- Weekly Projections Board Logic ---
@@ -158,9 +165,6 @@ def add_owners(league_df: pl.DataFrame | None, board_df: pl.DataFrame) -> pl.Dat
 
         # Join owner_map to the player board.
         board_df = board_df.join(owner_map, on='gsis_id', how='left')
-
-        # Drop duplicate players generated from join.
-        board_df = board_df.unique(subset=['gsis_id'], maintain_order=True)
 
     # Fill in null values.
     board_df = board_df.with_columns(pl.col('Owner').fill_null('Free Agent'))

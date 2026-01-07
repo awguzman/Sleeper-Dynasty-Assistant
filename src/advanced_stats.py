@@ -36,7 +36,12 @@ def compute_efficiency(league_df: pl.DataFrame | None) -> pl.DataFrame:
     # Compute efficiency as difference between actual and expected points.
     opp_df = opp_df.with_columns((pl.col('total_fantasy_points_exp') - pl.col('total_fantasy_points')).round(2).alias('Efficiency'))
 
-    opp_df = opp_df.rename({'player_id': 'gsis_id', 'full_name': 'Player', 'position': 'pos', 'total_fantasy_points': 'Actual Points', 'total_fantasy_points_exp': 'Expected Points'})
+    opp_df = opp_df.rename({'player_id': 'gsis_id',
+                            'full_name': 'Player',
+                            'position': 'pos',
+                            'total_fantasy_points': 'Actual Points',
+                            'total_fantasy_points_exp': 'Expected Points'
+                            })
 
     opp_df = add_owners(league_df, opp_df)
 
@@ -75,8 +80,10 @@ def receiving_share(league_df: pl.DataFrame | None) -> pl.DataFrame:
     prod_df = load_ff_opportunity(seasons=get_current_season(), stat_type='weekly')
     prod_df = prod_df.select(prod_features).rename({'player_id': 'gsis_id'})
     prod_df = prod_df.group_by(['gsis_id']).agg([
-        pl.col('rec_yards_gained').sum(), pl.col('rec_yards_gained_team').sum()])
-    prod_df = prod_df.with_columns((pl.col('rec_yards_gained') / pl.col('rec_yards_gained_team')).round(2).alias('Receiving Yard Share'))
+        pl.col('rec_yards_gained').sum(),
+        pl.col('rec_yards_gained_team').sum()]
+    )
+    prod_df = prod_df.with_columns((pl.col('rec_yards_gained') / pl.col('rec_yards_gained_team')).round(3).alias('Receiving Yard Share'))
     prod_df = prod_df.drop('rec_yards_gained', 'rec_yards_gained_team')
     share_df = share_df.join(prod_df, on='gsis_id', how='left')
 
@@ -111,8 +118,8 @@ def rushing_share(league_df: pl.DataFrame | None) -> pl.DataFrame:
     ])
 
     share_df = share_df.with_columns(
-        (pl.col('rush_attempt') / pl.col('rush_attempt_team')).round(2).alias('Rushing Attempt Share'),
-        (pl.col('rush_yards_gained') / pl.col('rush_yards_gained_team')).round(2).alias('Rushing Yard Share')
+        (pl.col('rush_attempt') / pl.col('rush_attempt_team')).round(3).alias('Rushing Attempt Share'),
+        (pl.col('rush_yards_gained') / pl.col('rush_yards_gained_team')).round(3).alias('Rushing Yard Share')
     )
 
     share_df = share_df.rename({'player_id': 'gsis_id', 'full_name': 'Player'})
@@ -122,4 +129,8 @@ def rushing_share(league_df: pl.DataFrame | None) -> pl.DataFrame:
 
     return share_df
 
+def qb_yac_dependence(league_df: pl.DataFrame | None) -> pl.DataFrame:
+    
+
+    return dep_df
 

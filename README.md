@@ -33,7 +33,7 @@ The dashboard is organized into three main sections: **Draft Tools**, **In-Seaso
 ### Advanced Stats
 - **Fantasy Efficiency**: A scatter plot showing actual vs. expected fantasy points for the season so far. Used to spot efficiency trends throughout the season.
 - **Receiving Share**: A scatter plot visualizing a receiver's role by comparing their share of team targets vs. their share of team air yards.
-- **Rushing Separation**: A scatter plot visualizing a running backs opportunity with how well they have converted that opportunity into yards.
+- **Rushing Share**: A scatter plot visualizing a running backs opportunity with how well they have converted that opportunity into yards.
 
 ## Packages/Frameworks
 

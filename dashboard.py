@@ -234,7 +234,7 @@ app.layout = html.Div([
                                             'width': '180px', 'minWidth': '180px', 'maxWidth': '250px',
                                         },
                                         {
-                                            'if': {'column_id': ['Team', 'ECR', 'Best', 'Worst', 'Std', 'Age', 'Bye']},
+                                            'if': {'column_id': ['Pos', 'Team', 'ECR', 'Best', 'Worst', 'Std', 'Age', 'Bye']},
                                             'width': '80px', 'minWidth': '80px', 'maxWidth': '80px',
                                         }
                                     ]
@@ -464,9 +464,13 @@ app.layout = html.Div([
                             ),
                             html.Hr(),
                             dcc.Markdown("""
-                                This chart plots a player's actual fantasy points vs. their expected points based on usage.
-                                *   **Players above the line** were efficient with their fantasy production and scored more than expected (possible regression candidate).
-                                *   **Players below the line** were inefficient and scored less than expected.
+                                This chart plots a player's actual fantasy points versus their expected points based on 
+                                their usage throughout the season.
+                                
+                                The dashed line represents the expected position of players based on historical data. 
+                                Due to the way that these probabilities are calculated and the randomness of football, 
+                                one should not expect most players lie below this line. Any player above it should be 
+                                expected to regress throughout the season/next season.
                             """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
                         ]),
                     # --- Receiving Share tab ---
@@ -481,10 +485,14 @@ app.layout = html.Div([
                             ),
                             html.Hr(),
                             dcc.Markdown("""
-                            *Weighted Opportunity Rating (WOPR)* is a metric measuring the not only how many targets a player receives but also the quality of those targets (WOPR = (Target Share) + 0.7(Air Yard Share))
-                            *Receiving Yard Share* refers to a players share of actual receiving yards with respect to the rest of the team. This measures the actual production of the player.
+                            This chart plots the quality of a players target share on their team versus their 
+                            receiving yard share.
                             
-                            **Note:** Use this chart to understand how much opportunity a receiver has been given throughout the season versus how they actually produced.
+                            **Weighted Opportunity Rating (WOPR)** is a metric measuring the not only how many targets a 
+                            player receives but also the quality of those targets (WOPR = (Target Share) + 0.7(Air Yard Share))
+                            
+                            **Receiving Yard Share** refers to a players share of actual receiving yards with respect to 
+                            the rest of the team. This measures the actual production of the player.
                             """,
                             style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px','padding-top': '10px'})
                 ]),
@@ -500,10 +508,12 @@ app.layout = html.Div([
                             ),
                             html.Hr(),
                             dcc.Markdown("""
-                            *Rushing Attempt Share* refers to how often a player is is given a rushing attempt on their team
-                            *Rushing Yard Share* refers to how many yards a runningback has rushed with respect to their team.
-
-                            **Note:** Use this chart to understand how much opportunity a rusher has been given throughout the season versus how they actually produced.
+                            This chart plots the share of opportunities a running back has on their team versus
+                            the their share of rushing production.
+                            
+                            **Rushing Attempt Share** refers to how often a player is is given a rushing attempt on their team.
+                            
+                            **Rushing Yard Share** refers to how many yards a runningback has rushed with respect to their team.
                             """,
                                          style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px',
                                                 'padding-top': '10px'})
@@ -642,7 +652,7 @@ def update_draft_table(owner_name, draft_positional_data, draft_overall_data, po
 
     # --- Generate Conditional Styling & Final Columns ---
     styles = []
-    columns_to_drop = ['fantasypros_id', 'scrape_date', 'pos']
+    columns_to_drop = ['fantasypros_id', 'scrape_date']
 
     # Only apply ownership styling and show Owner column if a league is active
     if 'Owner' in board_df.columns and board_df['Owner'][0] != 'N/A':
@@ -766,7 +776,7 @@ def update_draft_tier_chart(draft_data, position, owner_name):
 
     # Load and filter the main board data
     board_df = pl.read_json(io.StringIO(draft_data))
-    position_df = board_df.filter(pl.col('pos') == position)
+    position_df = board_df.filter(pl.col('Pos') == position)
 
     # Apply the tiering algorithm
     tiered_df = create_tiers(
@@ -862,7 +872,7 @@ def update_trade_value_tables(draft_data, owner_name, league_data):
 
     # Helper function to prepare data for positional tables
     def prep_value_tables(pos: str):
-        pos_values_df = values_df.filter(pl.col('pos') == pos).sort('Value', descending=True)
+        pos_values_df = values_df.filter(pl.col('Pos') == pos).sort('Value', descending=True)
 
         # Define the columns to display in the table
         display_cols = ['Player', 'Age', 'Value']

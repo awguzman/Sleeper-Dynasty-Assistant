@@ -15,8 +15,8 @@ def create_trade_values(board_df: pl.DataFrame) -> pl.DataFrame:
     """
     Creates a trade value board.
 
-    This function takes DataFrames representing a player board (typically from the dashboard's data store),
-    adds data like ages and ownership, and then calculates the final trade values.
+    This function takes DataFrames representing a player board (typically from the dashboard's data store)
+    and then calculates the final trade values.
 
     Args:
         board_df: The input player board, expected to have ECR data. Typically comes from the dashboard's data store.
@@ -27,17 +27,17 @@ def create_trade_values(board_df: pl.DataFrame) -> pl.DataFrame:
     if board_df.is_empty():
         return pl.DataFrame()
 
-    board_columns = ['fantasypros_id', 'Player', 'pos', 'Age', 'Owner']
+    board_columns = ['fantasypros_id', 'Player', 'Pos', 'ECR', 'Age', 'Owner']
     board_df = board_df.select(board_columns)
 
-    # Load in latest dynasty ECR rankings from DynastyProcess
-    latest_url = 'https://raw.githubusercontent.com/dynastyprocess/data/master/files/values-players.csv'
-    latest_columns = ['fp_id', 'player', 'pos', 'ecr_1qb']
-    latest_df = pl.read_csv(source=latest_url, columns=latest_columns)
-    latest_df = latest_df.rename({'fp_id': 'fantasypros_id', 'player': 'Player', 'ecr_1qb': 'ECR'})
+    # # Load in latest dynasty ECR rankings from DynastyProcess
+    # latest_url = 'https://raw.githubusercontent.com/dynastyprocess/data/master/files/values-players.csv'
+    # latest_columns = ['fp_id', 'player', 'pos', 'ecr_1qb']
+    # latest_df = pl.read_csv(source=latest_url, columns=latest_columns)
+    # latest_df = latest_df.rename({'fp_id': 'fantasypros_id', 'player': 'Player', 'ecr_1qb': 'ECR'})
 
-    # Join latest ECR rankings to the player board
-    board_df = board_df.join(latest_df, on=['fantasypros_id', 'Player', 'pos'], how='left', maintain_order='right')
+    # # Join latest ECR rankings to the player board
+    # board_df = board_df.join(latest_df, on=['fantasypros_id', 'Player', 'pos'], how='left', maintain_order='right')
 
     # --- Define Decay Parameters ---
     # Piece 1 (ECR 1-84): Steep decay for starters.
@@ -61,4 +61,4 @@ def create_trade_values(board_df: pl.DataFrame) -> pl.DataFrame:
 
     values_df = values_df.cast({'Value': pl.Int64})
 
-    return values_df.select(['fantasypros_id', 'Player', 'pos', 'Age', 'Value', 'Owner'])
+    return values_df.select(['fantasypros_id', 'Player', 'Pos', 'Age', 'Value', 'Owner'])

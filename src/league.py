@@ -124,7 +124,7 @@ def translate_owner_id(league_id: str) -> pl.DataFrame:
 
 def get_scoring_weights(league_id: str) -> dict:
     """
-    Gets the scoring settings for the Sleeper league ID. Not used yey...
+    Gets the scoring settings for the Sleeper league ID. Not used yet...
 
     Args:
         league_id (str): The unique identifier for the Sleeper league.

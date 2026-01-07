@@ -141,7 +141,7 @@ def create_efficiency_chart(efficiency_df: pl.DataFrame, user_name: str | None =
         color='Status',
         color_discrete_map=color_map,
         custom_data=['Player', 'Efficiency', 'Owner'],
-        title="Actual vs. Expected Fantasy Point Production"
+        title="Fantasy Football Point Efficiency"
     )
 
     # Add the y=x line
@@ -227,7 +227,7 @@ def create_rec_share_chart(share_df: pl.DataFrame, user_name: str | None = None)
         color='Status',
         color_discrete_map=color_map,
         custom_data=['Player', 'Owner'],
-        title="Quality of Receiving Targets Vs. Share of Receiving Yards"
+        title="Receiving Share"
     )
 
     # --- Calculate and Add Linear Regression ---
@@ -324,7 +324,7 @@ def create_rush_share_chart(share_df: pl.DataFrame, user_name: str | None = None
         color='Status',
         color_discrete_map=color_map,
         custom_data=['Player', 'Owner'],
-        title="Share of Rushing Attempts Vs. Share of Rushing Yards"
+        title="Rushing Share"
     )
 
     # --- Calculate and Add Linear Regression ---
