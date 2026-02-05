@@ -1,12 +1,12 @@
 # Sleeper Dynasty Assistant
 
-An interactive web dashboard for your Sleeper.com-based dynasty fantasy football leagues. This application 
+An Dash-based interactive web dashboard for your Sleeper.com-based dynasty fantasy football leagues. This application 
 fetches live data from [nflreadpy](https://github.com/nflverse/nflreadpy) and integrates it with your specific league's 
 rosters via [Sleeper.com API](https://docs.sleeper.com/).
 
 You can test out an online version of the application via the link: https://sleeper-dynasty-assistant.onrender.com
 
-Note: This web version is VERY slow due to the free-tier limitations of render.com. It should be viewed more as a demo.
+Note: This web version is VERY slow due to the free-tier limitations of the hosting platform. It should be viewed more as a demo.
 
 ## Features
 
@@ -19,7 +19,7 @@ The dashboard is organized into three main sections: **Draft Tools**, **In-Seaso
 - **Live Data**: Player rankings and projections are fetched from `nflreadpy`, ensuring the data is up-to-date.
 
 ### League Tools
-- **Overview**: Under Construction
+- **Overview**: View a users roster and relative positional strengths compared to the rest of the league.
 - **Trade Values**: Side-by-side, scrollable tables displaying dynasty trade values for each position.
 
 ### Draft Tools

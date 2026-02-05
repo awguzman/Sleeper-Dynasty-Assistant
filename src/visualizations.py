@@ -374,3 +374,62 @@ def create_rush_share_chart(share_df: pl.DataFrame, user_name: str | None = None
     )
 
     return fig
+
+def create_team_radar_chart(user_ranks: pl.DataFrame, league_size: int) -> go.Figure:
+    """
+    Creates a radar chart visualizing the team's positional strength percentiles.
+
+    Args:
+        user_ranks (pl.DataFrame): DataFrame containing the user's ranks (from src.team.analyze_team).
+        league_size (int): The number of teams in the league.
+
+    Returns:
+        go.Figure: A Plotly figure object.
+    """
+    if user_ranks.is_empty():
+        return go.Figure()
+
+    # Define the positions we want to plot (excluding Overall)
+    positions = ['QB', 'RB', 'WR', 'TE']
+
+    # Create a base DataFrame to ensure all positions are represented
+    radar_df = pl.DataFrame({'Pos': positions})
+
+    # Join with user ranks to get the Rank for each position
+    # If a position is missing (no players), Rank will be null
+    radar_df = radar_df.join(user_ranks, on='Pos', how='left')
+
+    # Fill missing ranks with league_size (effectively ranking them last)
+    radar_df = radar_df.with_columns(pl.col('Rank').fill_null(league_size))
+
+    # Calculate Strength Score (Percentile)
+    # Rank 1 (Best) -> Score 1.0
+    # Rank N (Worst) -> Score 0.0
+    if league_size > 1:
+        radar_df = radar_df.with_columns(
+            ((league_size - pl.col('Rank')) / (league_size - 1)).alias('Score')
+        )
+    else:
+        radar_df = radar_df.with_columns(pl.lit(1.0).alias('Score'))
+
+    # Convert to pandas for Plotly
+    plot_df = radar_df.to_pandas()
+
+    fig = px.line_polar(
+        plot_df,
+        r='Score',
+        theta='Pos',
+        line_close=True,
+        range_r=[0, 1]
+    )
+    fig.update_traces(fill='toself', line_color='#007bff')
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True, showticklabels=False)),
+        height=350,
+        margin=dict(l=40, r=40, t=40, b=20),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='black')
+    )
+
+    return fig

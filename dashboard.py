@@ -17,9 +17,11 @@ from src.boards import create_board
 from src.league import get_league_info
 from src.tiers import create_tiers
 from src.trade import create_trade_values
+from src.team import analyze_team
 from src.advanced_stats import (compute_efficiency, receiving_share, rushing_share)
 from src.visualizations import (create_tier_chart, create_efficiency_chart,
-                                create_rec_share_chart, create_rush_share_chart)
+                                create_rec_share_chart, create_rush_share_chart,
+                                create_team_radar_chart)
 
 # --- Configure nflreadpy Cache ---
 from pathlib import Path
@@ -64,7 +66,8 @@ app.layout = html.Div([
             dcc.Input(
                 id='league-id-input',
                 type='text',
-                placeholder='e.g., 992016434344030208'
+                placeholder='e.g., 992016434344030208',
+                style={'width': '300px'}  # Explicitly set the width
             ),
         ], style={'display': 'flex', 'align-items': 'center', 'margin-right': '50px', 'padding': '0px 25px'}),
 
@@ -89,8 +92,23 @@ app.layout = html.Div([
             # --- Nested Tabs for parent League Tools tab
             dcc.Tabs(className='nested-tabs-container', children=[
                 # --- Overview Tab ---
-                dcc.Tab(label='Overview', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
+                dcc.Tab(label='Overview', value='overview', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
+                    html.Br(),
+                    # The main two-column flex container
+                    html.Div([
+                        # Left Column: Roster
+                        html.Div([
+                            html.H3(id='overview-roster-title', children="Roster", style={'textAlign': 'center'}),
+                            dcc.Loading(type='circle', children=html.Div(id='overview-roster-list', style={'padding': '15px', 'borderRadius': '5px', 'minHeight': '200px'}))
+                        ], style={'flex': 1, 'padding': '0 20px'}),
 
+                        # Right Column: Strength
+                        html.Div([
+                            html.H3("Positional Strength", style={'textAlign': 'center'}),
+                            dcc.Loading(type='circle', children=html.Div(id='overview-strength-list', style={'padding': '15px', 'borderRadius': '5px', 'minHeight': '200px'})),
+                            dcc.Loading(type='circle', children=dcc.Graph(id='overview-radar-chart', style={'marginTop': '10px'}))
+                        ], style={'flex': 1, 'padding': '0 20px'})
+                    ], style={'display': 'flex', 'flexDirection': 'row'})
                 ]),
                 # --- Trade Values tab ---
                 dcc.Tab(label='Trade Values', className='custom-nested-tab',
@@ -567,6 +585,93 @@ def update_league_store(league_id):
 
     league_df = get_league_info(league_id)
     return league_df.write_json()
+
+
+# --- Callback to Update Overview Tab ---
+@app.callback(
+    [Output('overview-roster-title', 'children'),
+     Output('overview-roster-list', 'children'),
+     Output('overview-strength-list', 'children'),
+     Output('overview-radar-chart', 'figure')],
+    [Input('owner-name-dropdown', 'value'),
+     Input('draft-overall-board-store', 'data')]
+)
+def update_overview_tab(owner_name, draft_data):
+    """
+    Generates the content for the Overview tab:
+    1. Left Column: User's roster by position.
+    2. Right Column: Team strength rankings vs the league.
+    3. Right Column: Radar chart of team strength.
+    """
+    empty_msg = html.Div("Please select a Sleeper league and owner name.", style={'textAlign': 'center', 'color': 'grey'})
+
+    if not draft_data or not owner_name:
+        return "Roster", empty_msg, empty_msg, go.Figure()
+
+    # 1. Load Data and Calculate Values
+    board_df = pl.read_json(io.StringIO(draft_data))
+    
+    # Check if we have ownership data
+    if 'Owner' not in board_df.columns or board_df['Owner'][0] == 'N/A':
+         msg = html.Div("Please enter a valid League ID.", style={'textAlign': 'center', 'color': 'grey'})
+         return "Roster", msg, msg, go.Figure()
+
+    # Calculate roster and team strengths
+    user_roster, user_ranks, league_size = analyze_team(board_df, owner_name)
+    
+    # --- Build Left Column: User's Roster ---
+    roster_components = []
+    for pos in ['QB', 'RB', 'WR', 'TE']:
+        pos_players = user_roster.filter(pl.col('Pos') == pos)
+        if not pos_players.is_empty():
+            roster_components.append(html.H4(pos, style={'borderBottom': '1px solid #555', 'marginBottom': '5px'}))
+            # Simple list of players
+            player_list = []
+            for row in pos_players.iter_rows(named=True):
+                player_list.append(html.Div([
+                    html.Span(row['Player'], style={'fontWeight': 'bold'}),
+                    html.Span(f" ({row['Value']})", style={'color': 'grey', 'fontSize': '0.9em'})
+                ], style={'display': 'flex', 'justifyContent': 'space-between', 'marginBottom': '2px'}))
+            
+            roster_components.append(html.Div(player_list, style={'marginBottom': '15px'}))
+
+    roster_title = f"{owner_name}'s Roster"
+
+    # --- Build Right Column: Strength Analysis ---
+    strength_components = []
+    # Helper function for ordinal suffix (1st, 2nd, 3rd)
+    def ordinal(n):
+        return "%d%s" % (n, "tsnrhtdd"[(n // 10 % 10 != 1) * (n % 10 < 4) * n % 10::4])
+
+    for pos in ['Overall', 'QB', 'RB', 'WR', 'TE']:
+        rank_row = user_ranks.filter(pl.col('Pos') == pos)
+        if not rank_row.is_empty():
+            rank = int(rank_row['Rank'][0])
+            total_val = rank_row['Total Value'][0]
+            avg_val = rank_row['Avg Value'][0]
+            diff = total_val - avg_val
+            
+            # Color code based on rank (Top third Green, Bottom third Red, else Orange)
+            color = 'orange'
+            if rank <= league_size/3: color = '#28a745' # Green
+            elif rank >= (2*league_size)/3: color = '#dc3545' # Red
+
+            diff_color = '#28a745' if diff >= 0 else '#dc3545'
+            diff_sign = '+' if diff >= 0 else ''
+
+            strength_components.append(html.Div([
+                html.H4(pos, style={'margin': '0', 'width': '70px'}),
+                html.H4(f"{ordinal(rank)}", style={'margin': '0', 'color': color, 'flex': 1, 'textAlign': 'center'}),
+                html.Div([
+                    html.Span(f"Val: {total_val}", style={'color': 'grey', 'fontSize': '0.9em'}),
+                    html.Span(f" ({diff_sign}{int(diff)})", style={'color': diff_color, 'fontSize': '0.8em', 'marginLeft': '5px', 'fontWeight': 'bold'})
+                ], style={'display': 'flex', 'alignItems': 'baseline'})
+            ], style={'display': 'flex', 'alignItems': 'center', 'borderBottom': '1px solid #444', 'padding': '10px 0'}))
+
+    # --- Generate Radar Chart ---
+    radar_fig = create_team_radar_chart(user_ranks, league_size)
+
+    return roster_title, roster_components, strength_components, radar_fig
 
 
 # --- Master Callback to Compute and Store Full Board Data ---
