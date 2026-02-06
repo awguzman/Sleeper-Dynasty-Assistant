@@ -10,7 +10,7 @@ Note: This web version is VERY slow due to the free-tier limitations of the host
 
 ## Features
 
-The dashboard is organized into three main sections: **Draft Tools**, **In-Season Tools**, and **Advanced Stats**.
+The dashboard is organized into three main sections: **League Tools**, **Draft Tools**, **In-Season Tools**, and **Advanced Stats**.
 
 ### Core Functionality
 - **League-Aware Analysis**: Enter your Sleeper League ID to unlock features like player ownership tracking and filtering for free agents.
