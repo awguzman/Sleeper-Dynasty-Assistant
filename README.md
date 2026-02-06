@@ -87,5 +87,4 @@ To run the dashboard on your local machine, follow these steps.
 
 This is a living project with many planned features including:
 
-- **League View**: A "bird's-eye view" tab that displays all team rosters in the league side-by-side with strength analysis.
 - **In-house Projections** Use historical data to produce custom scoring projections. XGBoost based?
