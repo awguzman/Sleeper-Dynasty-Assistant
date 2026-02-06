@@ -10,13 +10,13 @@ Note: This web version is VERY slow due to the free-tier limitations of the host
 
 ## Features
 
-The dashboard is organized into three main sections: **League Tools**, **Draft Tools**, **In-Season Tools**, and **Advanced Stats**.
-
 ### Core Functionality
 - **League-Aware Analysis**: Enter your Sleeper League ID to unlock features like player ownership tracking and filtering for free agents.
 - **Default Mode**: The app is fully functional even without a League ID, providing general rankings and visualizations.
 - **High-Performance Backend**: Utilizes `Polars` for fast data processing and `Dash` for efficient data caching.
 - **Live Data**: Player rankings and projections are fetched from `nflreadpy`, ensuring the data is up-to-date.
+
+The dashboard is organized into four main sections: **League Tools**, **Draft Tools**, **In-Season Tools**, and **Advanced Stats**.
 
 ### League Tools
 - **Overview**: View a users roster and relative positional strengths compared to the rest of the league.
