@@ -739,7 +739,7 @@ def update_draft_table(owner_name, draft_positional_data, draft_overall_data, po
         board_df = pl.read_json(io.StringIO(draft_positional_data))
 
         # Filter for the selected position
-        board_df = board_df.filter(pl.col('pos') == position)
+        board_df = board_df.filter(pl.col('Pos') == position)
 
     # The checklist's value is a list. It's not empty if the box is checked.
     show_taken_flag = bool(show_taken_value)
@@ -812,7 +812,7 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value):
     board_df = pl.read_json(io.StringIO(weekly_data))
 
     # Filter for the selected position
-    board_df = board_df.filter(pl.col('pos') == position)
+    board_df = board_df.filter(pl.col('Pos') == position)
 
     # The checklist's value is a list. It's not empty if the box is checked.
     show_taken_flag = bool(show_taken_value)
@@ -830,7 +830,7 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value):
 
     # --- Generate Conditional Styling & Final Columns ---
     styles = []
-    columns_to_drop = ['fantasypros_id', 'scrape_date', 'pos']
+    columns_to_drop = ['fantasypros_id', 'scrape_date', 'Pos']
 
     # Only apply ownership styling and show Owner column if a league is active
     if 'Owner' in board_df.columns and board_df['Owner'][0] != 'N/A':
@@ -921,7 +921,7 @@ def update_weekly_tier_chart(weekly_data, position, owner_name):
 
     # Load and filter the main board data
     board_df = pl.read_json(io.StringIO(weekly_data))
-    position_df = board_df.filter(pl.col('pos') == position)
+    position_df = board_df.filter(pl.col('Pos') == position)
 
     # Apply the tiering algorithm
     tiered_df = create_tiers(
@@ -1075,4 +1075,4 @@ def update_rush_share_chart(owner_name, league_data):
 # --- Run the Application ---
 # This block allows the script to be run directly to start the development server.
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)

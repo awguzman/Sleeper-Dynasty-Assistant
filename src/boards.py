@@ -89,6 +89,7 @@ def create_board(league_df: pl.DataFrame | None, draft: bool, positional: bool =
         board_df = board_df.rename({
             'player_name': 'Player',
             'team': 'Team',
+            'pos': 'Pos',
             'pos_rank': 'Rank',
             'player_opponent': 'Opponent',
             'start_sit_grade': 'Start Grade',
@@ -178,5 +179,5 @@ if __name__ == '__main__':
 
     league_id = input('Enter Sleeper platform league number (This is found in the sleeper url):')
     league_df = get_league_info(league_id)
-    board_df = create_board(league_df, draft=True, positional=False)
+    board_df = create_board(league_df, draft=True, positional=True)
     print(board_df)
