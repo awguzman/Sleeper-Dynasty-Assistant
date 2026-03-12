@@ -9,6 +9,7 @@ import io
 # --- Dashboard Imports ---
 import dash
 from dash import dcc, html, dash_table
+import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 
@@ -30,15 +31,14 @@ from nflreadpy.config import update_config
 cache_dir = Path(__file__).resolve().parent / 'cache'
 update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True, cache_duration=3600)
 
-# Initialize the Dash application. Suppress callback exceptions due to dynamic layout.
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
+# Initialize the Dash application
+app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.SPACELAB])
 
 # Server variable
 server = app.server
 
 # --- App Layout ---
-# The layout is the root component that describes the application's appearance.
-app.layout = html.Div([
+app.layout = dbc.Container([
     # --- Data Stores ---
     # These hidden components store the results of expensive computations.
     dcc.Store(id='draft-positional-board-store'),
@@ -47,221 +47,166 @@ app.layout = html.Div([
     dcc.Store(id='league-info-store'),
 
     # --- Header Section ---
-    html.Div([
-        html.H1("Sleeper Dynasty Assistant"),
-        html.A(
-            "Github",
-            href="https://github.com/awguzman/Sleeper-Dynasty-Assistant",
-            target="_blank",  # This opens the link in a new tab
-            style={'fontSize': '12px', 'textDecoration': 'none'}
-        )
-    ], style={'display': 'flex', 'justifyContent': 'space-between', 'alignItems': 'center', 'padding': '0px 25px'}),
+    dbc.Row([
+        dbc.Col(html.H1("Sleeper Dynasty Assistant"), width="auto"),
+        dbc.Col(html.A("Github", href="https://github.com/awguzman/Sleeper-Dynasty-Assistant", target="_blank"),
+                width="auto", className="d-flex align-items-center")
+    ], justify="between", className="my-3"),
 
     # --- Global Controls ---
-    # These inputs for league and owner are placed outside the tabs to be persistent
-    html.Div(children=[
-        # League ID Input
-        html.Div([
-            html.Label("Enter Sleeper League ID: ", style={'margin-right': '10px'}),
-            dcc.Input(
-                id='league-id-input',
-                type='text',
-                placeholder='e.g., 992016434344030208',
-                style={'width': '300px'}  # Explicitly set the width
-            ),
-        ], style={'display': 'flex', 'align-items': 'center', 'margin-right': '50px', 'padding': '0px 25px'}),
-
-        # Owner Name Dropdown
-        html.Div([
-            html.Label("Select Owner: ", style={'margin-right': '10px'}),
-            dcc.Dropdown(
-                id='owner-name-dropdown',
-                placeholder='Your username',
-                disabled=True, # Disabled until league_id provided.
-                style={'width': '250px'}
-            ),
-        ], style={'display': 'flex', 'align-items': 'center'}),
-    ], style={'display': 'flex', 'align-items': 'center'}),
-    html.Br(),
-
+    dbc.Row([
+        dbc.Col(dbc.InputGroup([
+            dbc.InputGroupText("Sleeper League ID"),
+            dbc.Input(id="league-id-input", placeholder="e.g., 992016434344030208"),
+        ]), md=6),
+        dbc.Col(dbc.InputGroup([
+            dbc.InputGroupText("Select Owner"),
+            dbc.Select(id='owner-name-dropdown', placeholder='Your username', disabled=True),
+        ]), md=6),
+    ], className="mb-3"),
 
     # --- Main Tabbed Interface ---
-    dcc.Tabs(className='top-tabs-container', children=[
+    dbc.Tabs([
         # --- Top Level Tab: League Tools ---
-        dcc.Tab(label='League Tools', className='custom-top-tab', selected_className='custom-top-tab-selected', children=[
-            # --- Nested Tabs for parent League Tools tab
-            dcc.Tabs(className='nested-tabs-container', children=[
+        dbc.Tab(label='League Tools', children=[
+            dbc.Tabs([
                 # --- Overview Tab ---
-                dcc.Tab(label='Overview', value='overview', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
-                    html.Br(),
-                    # The main two-column flex container
-                    html.Div([
+                dbc.Tab(label='Overview', children=[
+                    dbc.Row([
                         # Left Column: Roster
-                        html.Div([
-                            html.H3(id='overview-roster-title', children="Roster", style={'textAlign': 'center'}),
-                            dcc.Loading(type='circle', children=html.Div(id='overview-roster-list', style={'padding': '15px', 'borderRadius': '5px', 'minHeight': '200px'}))
-                        ], style={'flex': 1, 'padding': '0 20px'}),
-
+                        dbc.Col([
+                            html.H3(id='overview-roster-title', children="Roster", className="text-center"),
+                            dcc.Loading(type='circle', children=html.Div(id='overview-roster-list'))
+                        ], md=6),
                         # Right Column: Strength
-                        html.Div([
-                            html.H3("Positional Strength", style={'textAlign': 'center'}),
-                            dcc.Loading(type='circle', children=html.Div(id='overview-strength-list', style={'padding': '15px', 'borderRadius': '5px', 'minHeight': '200px'})),
-                            dcc.Loading(type='circle', children=dcc.Graph(id='overview-radar-chart', style={'marginTop': '10px'}))
-                        ], style={'flex': 1, 'padding': '0 20px'})
-                    ], style={'display': 'flex', 'flexDirection': 'row'})
+                        dbc.Col([
+                            html.H3("Positional Strength", className="text-center"),
+                            dcc.Loading(type='circle', children=html.Div(id='overview-strength-list')),
+                            dcc.Loading(type='circle', children=dcc.Graph(id='overview-radar-chart'))
+                        ], md=6)
+                    ], className="mt-3")
                 ]),
                 # --- Trade Values tab ---
-                dcc.Tab(label='Trade Values', className='custom-nested-tab',
-                        selected_className='custom-nested-tab-selected', children=[
-                        html.Br(),
-                        # Container for side-by-side tables
-                        html.Div(children=[
-                            # QB Table
-                            html.Div(children=[
-                                html.H4("Quarterback", style={'textAlign': 'center'}),
-                                dcc.Loading(type='circle', children=dash_table.DataTable(
-                                    id='trade-value-table-qb',
-                                    style_table={'height': '600px', 'overflowY': 'auto'},
-                                    # Fix table height and add scroll bar.
-                                    style_header={'fontWeight': 'bold'},
-                                    style_cell={'textAlign': 'left', 'padding': '5px'},
-                                    style_cell_conditional=[
-                                        {'if': {'column_id': 'Player'}, 'width': '50%'},
-                                        {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
-                                    ]
-                                )),
-                            ], style={'flex': 1, 'padding': '0px 10px'}),
-                            # RB Table
-                            html.Div([
-                                html.H4("Running Back", style={'textAlign': 'center'}),
-                                dcc.Loading(type='circle', children=dash_table.DataTable(
-                                    id='trade-value-table-rb',
-                                    style_table={'height': '600px', 'overflowY': 'auto'},
-                                    # Fix table height and add scroll bar.
-                                    style_header={'fontWeight': 'bold'},
-                                    style_cell={'textAlign': 'left', 'padding': '5px'},
-                                    style_cell_conditional=[
-                                        {'if': {'column_id': 'Player'}, 'width': '50%'},
-                                        {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
-                                    ]
-                                )),
-                            ], style={'flex': 1, 'padding': '0px 10px'}),
-                            # WR Table
-                            html.Div([
-                                html.H4("Wide Receiver", style={'textAlign': 'center'}),
-                                dcc.Loading(type='circle', children=dash_table.DataTable(
-                                    id='trade-value-table-wr',
-                                    style_table={'height': '600px', 'overflowY': 'auto'},
-                                    # Fix table height and add scroll bar.
-                                    style_header={'fontWeight': 'bold'},
-                                    style_cell={'textAlign': 'left', 'padding': '5px'},
-                                    style_cell_conditional=[
-                                        {'if': {'column_id': 'Player'}, 'width': '50%'},
-                                        {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
-                                    ]
-                                )),
-                            ], style={'flex': 1, 'padding': '0px 10px'}),
-                            # TE Table
-                            html.Div([
-                                html.H4("Tight End", style={'textAlign': 'center'}),
-                                dcc.Loading(type='circle', children=dash_table.DataTable(
-                                    id='trade-value-table-te',
-                                    style_table={'height': '600px', 'overflowY': 'auto'},
-                                    # Fix table height and add scroll bar.
-                                    style_header={'fontWeight': 'bold'},
-                                    style_cell={'textAlign': 'left', 'padding': '5px'},
-                                    style_cell_conditional=[
-                                        {'if': {'column_id': 'Player'}, 'width': '50%'},
-                                        {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
-                                    ]
-                                )),
-                            ], style={'flex': 1, 'padding': '0px 10px'}),
-                        ], style={'display': 'flex', 'flexDirection': 'row', 'padding': '0px 25px'}),
-                        html.Hr(),
-                        dcc.Markdown("""
+                dbc.Tab(label='Trade Values', children=[
+                    dbc.Row([
+                        # QB Table
+                        dbc.Col([
+                            html.H4("Quarterback", className="text-center"),
+                            dcc.Loading(type='circle', children=dash_table.DataTable(
+                                id='trade-value-table-qb',
+                                style_table={'height': '600px', 'overflowY': 'auto'},
+                                style_header={'fontWeight': 'bold'},
+                                style_cell={'textAlign': 'left', 'padding': '5px'},
+                                style_cell_conditional=[
+                                    {'if': {'column_id': 'Player'}, 'width': '50%'},
+                                    {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
+                                ],
+                                style_as_list_view=True,
+                                style_data={'backgroundColor': 'transparent'},
+                            )),
+                        ], md=3),
+                        # RB Table
+                        dbc.Col([
+                            html.H4("Running Back", className="text-center"),
+                            dcc.Loading(type='circle', children=dash_table.DataTable(
+                                id='trade-value-table-rb',
+                                style_table={'height': '600px', 'overflowY': 'auto'},
+                                style_header={'fontWeight': 'bold'},
+                                style_cell={'textAlign': 'left', 'padding': '5px'},
+                                style_cell_conditional=[
+                                    {'if': {'column_id': 'Player'}, 'width': '50%'},
+                                    {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
+                                ],
+                                style_as_list_view=True,
+                                style_data={'backgroundColor': 'transparent'},
+                            )),
+                        ], md=3),
+                        # WR Table
+                        dbc.Col([
+                            html.H4("Wide Receiver", className="text-center"),
+                            dcc.Loading(type='circle', children=dash_table.DataTable(
+                                id='trade-value-table-wr',
+                                style_table={'height': '600px', 'overflowY': 'auto'},
+                                style_header={'fontWeight': 'bold'},
+                                style_cell={'textAlign': 'left', 'padding': '5px'},
+                                style_cell_conditional=[
+                                    {'if': {'column_id': 'Player'}, 'width': '50%'},
+                                    {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
+                                ],
+                                style_as_list_view=True,
+                                style_data={'backgroundColor': 'transparent'},
+                            )),
+                        ], md=3),
+                        # TE Table
+                        dbc.Col([
+                            html.H4("Tight End", className="text-center"),
+                            dcc.Loading(type='circle', children=dash_table.DataTable(
+                                id='trade-value-table-te',
+                                style_table={'height': '600px', 'overflowY': 'auto'},
+                                style_header={'fontWeight': 'bold'},
+                                style_cell={'textAlign': 'left', 'padding': '5px'},
+                                style_cell_conditional=[
+                                    {'if': {'column_id': 'Player'}, 'width': '50%'},
+                                    {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
+                                ],
+                                style_as_list_view=True,
+                                style_data={'backgroundColor': 'transparent'},
+                            )),
+                        ], md=3),
+                    ], className="mt-3"),
+                    html.Hr(),
+                    dcc.Markdown("""
                     Trade values are based on overall dynasty ECR values. They will (possibly over)emphasize long term value
                     over short-term gain.
-                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
-                    ]),
+                    """, className="text-muted fst-italic mt-3")
+                ]),
             ]),
         ]),
         # --- Top Level Tab: Draft Tools ---
-        dcc.Tab(label='Draft Tools', className='custom-top-tab', selected_className='custom-top-tab-selected', children=[
-            # --- Nested Tabs for parent Draft Tools tab
-            dcc.Tabs(className='nested-tabs-container', children=[
+        dbc.Tab(label='Draft Tools', children=[
+            dbc.Tabs([
                 # --- Draft Board tab ---
-                dcc.Tab(label='Draft Board', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
-                    html.Br(),
-                    html.Div([
-                        # Group for left-aligned items
-                        html.Div([
-                            html.Label("Position: ", style={'margin-right': '20px'}),
-                            # Position choices.
-                            dcc.RadioItems(
-                                id='position-draft-selection',
-                                options=[
-                                    {'label': 'Overall', 'value': 'Overall'},
-                                    {'label': 'Quarterback', 'value': 'QB'},
-                                    {'label': 'Running Back', 'value': 'RB'},
-                                    {'label': 'Wide Receiver', 'value': 'WR'},
-                                    {'label': 'Tight End', 'value': 'TE'},
-                                ],
-                                value='Overall',  # Default value
-                                inline=True,  # Display options horizontally
-                                labelStyle={'margin-right': '20px'}  # Add space between radio items
-                            ),
-                        ], style={'display': 'flex', 'align-items': 'center', 'padding': '0px 25px'}),
-
-                        # Show taken players checkbox
-                        dcc.Checklist(
+                dbc.Tab(label='Draft Board', children=[
+                    dbc.Row([
+                        dbc.Col(dbc.RadioItems(
+                            id='position-draft-selection',
+                            options=[
+                                {'label': 'Overall', 'value': 'Overall'},
+                                {'label': 'Quarterback', 'value': 'QB'},
+                                {'label': 'Running Back', 'value': 'RB'},
+                                {'label': 'Wide Receiver', 'value': 'WR'},
+                                {'label': 'Tight End', 'value': 'TE'},
+                            ],
+                            value='Overall',
+                            inline=True,
+                            labelClassName="me-3"
+                        ), width="auto"),
+                        dbc.Col(dbc.Checklist(
                             id='show-taken-draft-checkbox',
                             options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
-                            value=[],  # Default to unchecked
-                        ),
-                    ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between', 'padding': '0px 25px'}),
-                    html.Br(),
-
-                    # Draft board table
-                    html.Div(style={'padding': '0px 25px'}, children=[
-                        dcc.Loading(
-                            id='loading-draft-table',
-                            type='circle',
-                            children=[
-                                # Add a placeholder for the "Last Update" text
-                                html.Div(id='draft-last-update', style={'text-align': 'right', 'color': 'grey',
-                                                                        'font-style': 'italic',
-                                                                        'margin-bottom': '5px'}),
-                                dash_table.DataTable(
-                                    id='draft-table',
-                                    style_data_conditional=[],
-                                    style_table={'overflowX': 'auto'},
-                                    style_header={
-                                        'fontWeight': 'bold'
-                                    },
-                                    # Base styles for all cells
-                                    style_cell={
-                                        'textAlign': 'left',
-                                        'padding': '5px',
-                                        'whiteSpace': 'normal',
-                                        'height': 'auto',
-                                    },
-                                    # Conditional styles for specific columns
-                                    style_cell_conditional=[
-                                        {
-                                            'if': {'column_id': ['Player', 'Owner']},
-                                            'width': '180px', 'minWidth': '180px', 'maxWidth': '250px',
-                                        },
-                                        {
-                                            'if': {'column_id': ['Pos', 'Team', 'ECR', 'Best', 'Worst', 'Std', 'Age', 'Bye']},
-                                            'width': '80px', 'minWidth': '80px', 'maxWidth': '80px',
-                                        }
-                                    ]
-                                )
-                            ]
-                        )
-                    ]
-                             ),
-                    # Bottom text box
+                            value=[],
+                        ), width="auto"),
+                    ], justify="between", align="center", className="my-3"),
+                    dcc.Loading(
+                        id='loading-draft-table',
+                        type='circle',
+                        children=[
+                            html.Div(id='draft-last-update', className="text-end text-muted fst-italic mb-1"),
+                            dash_table.DataTable(
+                                id='draft-table',
+                                style_data_conditional=[],
+                                style_table={'overflowX': 'auto'},
+                                style_header={'fontWeight': 'bold'},
+                                style_cell={'textAlign': 'left', 'padding': '5px', 'whiteSpace': 'normal', 'height': 'auto'},
+                                style_cell_conditional=[
+                                    {'if': {'column_id': ['Player', 'Owner']}, 'width': '180px', 'minWidth': '180px', 'maxWidth': '250px'},
+                                    {'if': {'column_id': ['Pos', 'Team', 'ECR', 'Best', 'Worst', 'Std', 'Age', 'Bye']}, 'width': '80px', 'minWidth': '80px', 'maxWidth': '80px'}
+                                ],
+                                style_as_list_view=True,
+                                style_data={'backgroundColor': 'transparent'},
+                            )
+                        ]
+                    ),
                     html.Hr(),
                     dcc.Markdown("""
                     Note: This table does not take into consideration in-season performance. It should be considered 
@@ -271,39 +216,24 @@ app.layout = html.Div([
                     *   **Best/Worst**: Most optimistic (lowest)/pessimistic (highest) ranking given to a player by any one expert.
                     *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
                 
-                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
+                    """, className="text-muted fst-italic mt-3")
                 ]),
                 # --- Draft Tiers tab ---
-                dcc.Tab(label='Draft Tiers', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
-                    html.Br(),
-                    html.Div([
-                        # Position selection
-                        html.Div([
-                            html.Label("Position: ", style={'margin-right': '20px'}),
-                            dcc.RadioItems(
-                                id='position-draft-tier-selection',
-                                options=[
-                                    {'label': 'Quarterback', 'value': 'QB'},
-                                    {'label': 'Running Back', 'value': 'RB'},
-                                    {'label': 'Wide Receiver', 'value': 'WR'},
-                                    {'label': 'Tight End', 'value': 'TE'},
-                                ],
-                                value='QB',  # Default value
-                                inline=True,
-                                labelStyle={'margin-right': '20px'}
-                            ),
-                        ], style={'display': 'flex', 'align-items': 'center', 'padding': '0px 25px'}),
-                    ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
-                    html.Br(),
-
-                    dcc.Loading(
-                        id='loading-draft-tier-chart',
-                        type='circle',
-                        # Graph component to display the Plotly figure
-                        children=dcc.Graph(id='draft-tier-chart-graph')
+                dbc.Tab(label='Draft Tiers', children=[
+                    dbc.RadioItems(
+                        id='position-draft-tier-selection',
+                        options=[
+                            {'label': 'Quarterback', 'value': 'QB'},
+                            {'label': 'Running Back', 'value': 'RB'},
+                            {'label': 'Wide Receiver', 'value': 'WR'},
+                            {'label': 'Tight End', 'value': 'TE'},
+                        ],
+                        value='QB',
+                        inline=True,
+                        labelClassName="me-3",
+                        className="my-3"
                     ),
-
-                    # Bottom text box
+                    dcc.Loading(id='loading-draft-tier-chart', type='circle', children=dcc.Graph(id='draft-tier-chart-graph')),
                     html.Hr(),
                     dcc.Markdown("""
                     Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
@@ -314,88 +244,72 @@ app.layout = html.Div([
                     
                     Note: This does not take into consideration in-season performance. It should be considered 
                     outdated following the first week of play.
-                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
+                    """, className="text-muted fst-italic mt-3")
 
                 ]),
             ]),
         ]),
         # --- Top Level Tab: In-Season Tools ---
-        dcc.Tab(label='In-Season Tools', className='custom-top-tab', selected_className='custom-top-tab-selected', children=[
-            # --- Nested Tabs for parent In-Season Tools tab
-            dcc.Tabs(className='nested-tabs-container', children=[
-                # --- Draft Board tab ---
-                dcc.Tab(label='Weekly Projections', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
-                    html.Br(),
-                    html.Div([
-                        # Position selection
-                        html.Div([
-                            html.Label("Position: ", style={'margin-right': '20px'}),
-                            dcc.RadioItems(
-                                id='position-proj-selection',
-                                options=[
-                                    {'label': 'Quarterback', 'value': 'QB'},
-                                    {'label': 'Running Back', 'value': 'RB'},
-                                    {'label': 'Wide Receiver', 'value': 'WR'},
-                                    {'label': 'Tight End', 'value': 'TE'},
-                                ],
-                                value='QB',  # Default value
-                                inline=True,  # Display options horizontally
-                                labelStyle={'margin-right': '20px'}  # Add space between radio items
-                            ),
-                        ], style={'display': 'flex', 'align-items': 'center', 'padding': '0px 25px'}),
-
-                        # Show taken players checkbox
-                        dcc.Checklist(
+        dbc.Tab(label='In-Season Tools', children=[
+            dbc.Tabs([
+                # --- Weekly Projections tab ---
+                dbc.Tab(label='Weekly Projections', children=[
+                    dbc.Row([
+                        dbc.Col(dbc.RadioItems(
+                            id='position-proj-selection',
+                            options=[
+                                {'label': 'Quarterback', 'value': 'QB'},
+                                {'label': 'Running Back', 'value': 'RB'},
+                                {'label': 'Wide Receiver', 'value': 'WR'},
+                                {'label': 'Tight End', 'value': 'TE'},
+                            ],
+                            value='QB',
+                            inline=True,
+                            labelClassName="me-3"
+                        ), width="auto"),
+                        dbc.Col(dbc.Checklist(
                             id='show-taken-proj-checkbox',
                             options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
-                            value=[],  # Default to unchecked
-                        ),
-                    ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between', 'padding': '0px 25px'}),
+                            value=[],
+                        ), width="auto"),
+                    ], justify="between", align="center", className="my-3"),
 
-                    html.Br(),
-
-                    # Weekly projections table
-                    html.Div(style={'padding': '0px 25px'}, children=[
-                        dcc.Loading(
-                            id='loading-proj-table',
-                            type='circle',
-                            children=[
-                                # Add a placeholder for the "Last Update" text
-                                html.Div(id='proj-last-update', style={'text-align': 'right', 'color': 'grey',
-                                                                       'font-style': 'italic', 'margin-bottom': '5px'}),
-                                dash_table.DataTable(
-                                    id='proj-table',
-                                    style_data_conditional=[],
-                                    style_table={'overflowX': 'auto'},
-                                    style_header={
-                                        'fontWeight': 'bold'
+                    dcc.Loading(
+                        id='loading-proj-table',
+                        type='circle',
+                        children=[
+                            html.Div(id='proj-last-update', className="text-end text-muted fst-italic mb-1"),
+                            dash_table.DataTable(
+                                id='proj-table',
+                                style_data_conditional=[],
+                                style_table={'overflowX': 'auto'},
+                                style_header={
+                                    'fontWeight': 'bold'
+                                },
+                                style_cell={
+                                    'textAlign': 'left',
+                                    'padding': '5px',
+                                    'whiteSpace': 'normal',
+                                    'height': 'auto',
+                                },
+                                style_cell_conditional=[
+                                    {
+                                        'if': {'column_id': ['Player', 'Owner']},
+                                        'width': '150px', 'minWidth': '150px', 'maxWidth': '250px',
                                     },
-                                    # Base styles for all cells
-                                    style_cell={
-                                        'textAlign': 'left',
-                                        'padding': '5px',
-                                        'whiteSpace': 'normal',
-                                        'height': 'auto',
-                                    },
-                                    # Conditional styles for specific columns
-                                    style_cell_conditional=[
-                                        {
-                                            'if': {'column_id': ['Player', 'Owner']},
-                                            'width': '150px', 'minWidth': '150px', 'maxWidth': '250px',
-                                        },
-                                        {
-                                            'if': {
-                                                'column_id': ['ECR', 'Team', 'Opponent', 'Start Grade', 'Best', 'Worst',
-                                                              'Std', 'Rank', 'Proj. Points']},
-                                            'width': '80px', 'minWidth': '80px', 'maxWidth': '80px',
-                                        }
-                                    ]
-                                )
-                            ]
-                        )
-                    ]),
+                                    {
+                                        'if': {
+                                            'column_id': ['ECR', 'Team', 'Opponent', 'Start Grade', 'Best', 'Worst',
+                                                          'Std', 'Rank', 'Proj. Points']},
+                                        'width': '80px', 'minWidth': '80px', 'maxWidth': '80px',
+                                    }
+                                ],
+                                style_as_list_view=True,
+                                style_data={'backgroundColor': 'transparent'},
+                            )
+                        ]
+                    ),
 
-                    # Bottom text box
                     html.Hr(),
                     dcc.Markdown("""
                     Note: "Last Update" refers to the last update of data provided by FantasyPros. This application has no 
@@ -406,39 +320,25 @@ app.layout = html.Div([
                     *   **Worst**: Most pessimistic (highest) ranking given to a player by any one expert.
                     *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
                 
-                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'})
+                    """, className="text-muted fst-italic mt-3")
                 ]),
-                # --- Draft Tiers tab ---
-                dcc.Tab(label='Weekly Tiers', className='custom-nested-tab', selected_className='custom-nested-tab-selected', children=[
-                    html.Br(),
-                    html.Div([
-                        # Position selection
-                        html.Div([
-                            html.Label("Position: ", style={'margin-right': '20px'}),
-                            dcc.RadioItems(
-                                id='position-weekly-tier-selection',
-                                options=[
-                                    {'label': 'Quarterback', 'value': 'QB'},
-                                    {'label': 'Running Back', 'value': 'RB'},
-                                    {'label': 'Wide Receiver', 'value': 'WR'},
-                                    {'label': 'Tight End', 'value': 'TE'},
-                                ],
-                                value='QB',  # Default value
-                                inline=True,
-                                labelStyle={'margin-right': '20px'}
-                            ),
-                        ], style={'display': 'flex', 'align-items': 'center', 'padding': '0px 25px'}),
-                    ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'space-between'}),
-                    html.Br(),
-
-                    dcc.Loading(
-                        id='loading-weekly-tier-chart',
-                        type='circle',
-                        # Graph component to display the Plotly figure
-                        children=dcc.Graph(id='weekly-tier-chart-graph')
+                # --- Weekly Tiers tab ---
+                dbc.Tab(label='Weekly Tiers', children=[
+                    dbc.RadioItems(
+                        id='position-weekly-tier-selection',
+                        options=[
+                            {'label': 'Quarterback', 'value': 'QB'},
+                            {'label': 'Running Back', 'value': 'RB'},
+                            {'label': 'Wide Receiver', 'value': 'WR'},
+                            {'label': 'Tight End', 'value': 'TE'},
+                        ],
+                        value='QB',
+                        inline=True,
+                        labelClassName="me-3",
+                        className="my-3"
                     ),
-
-                    # Bottom text box
+                    dcc.Loading(id='loading-weekly-tier-chart', type='circle',
+                                children=dcc.Graph(id='weekly-tier-chart-graph')),
                     html.Hr(),
                     dcc.Markdown("""
                     Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
@@ -446,107 +346,84 @@ app.layout = html.Div([
                     players are ranked by FantasyPros.
                 
                     Inspired by analysis of Boris Chen, see www.borischen.co
-                    """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '20px', 'padding-top': '10px'}
-                    ),
+                    """, className="text-muted fst-italic mt-3")
                 ]),
             ]),
         ]),
         # --- Top Level Tab: Advanced Stats ---
-        dcc.Tab(label='Advanced Stats', className='custom-top-tab', selected_className='custom-top-tab-selected', children=[
-                # --- Nested Tabs for parent In-Season Tools tab
-                dcc.Tabs(className='nested-tabs-container', children=[
-                    # --- Weekly Efficiency Tab ---
-                    dcc.Tab(label='Fantasy Efficiency', value='efficiency', className='custom-nested-tab',
-                            selected_className='custom-nested-tab-selected', children=[
-                            html.Br(),
-                            html.Div([
-                                html.Label("Position: ", style={'margin-right': '20px'}),
-                                dcc.RadioItems(
-                                    id='position-efficiency-selection',
-                                    options=[
-                                        {'label': 'QB', 'value': 'QB'},
-                                        {'label': 'RB', 'value': 'RB'},
-                                        {'label': 'WR', 'value': 'WR'},
-                                        {'label': 'TE', 'value': 'TE'}
-                                    ],
-                                    value='RB',  # Default value
-                                    inline=True,
-                                    labelStyle={'margin-right': '20px'}
-                                ),
-                            ], style={'display': 'flex', 'align-items': 'center', 'padding': '0px 25px'}),
-                            html.Br(),
-                            dcc.Loading(
-                                id='loading-efficiency-chart',
-                                type='circle',
-                                children=dcc.Graph(id='efficiency-chart')
-                            ),
-                            html.Hr(),
-                            dcc.Markdown("""
-                                This chart plots a player's actual fantasy points versus their expected points based on 
-                                their usage throughout the season.
-                                
-                                The dashed line represents the expected position of players based on historical data. 
-                                Due to the way that these probabilities are calculated and the randomness of football, 
-                                one should not expect most players lie below this line. Any player above it should be 
-                                expected to regress throughout the season/next season.
-                            """, style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px', 'padding-top': '10px'})
-                        ]),
-                    # --- Receiving Share tab ---
-                    dcc.Tab(label='Receiving Share', className='custom-nested-tab',
-                            selected_className='custom-nested-tab-selected', children=[
-                            html.Br(),
-
-                            dcc.Loading(
-                                id='loading-rec-share-chart',
-                                type='circle',
-                                children=dcc.Graph(id='rec-share-chart')
-                            ),
-                            html.Hr(),
-                            dcc.Markdown("""
-                            This chart plots the quality of a players target share on their team versus their 
-                            receiving yard share.
+        dbc.Tab(label='Advanced Stats', children=[
+            dbc.Tabs([
+                # --- Weekly Efficiency Tab ---
+                dbc.Tab(label='Fantasy Efficiency', children=[
+                        dbc.RadioItems(
+                            id='position-efficiency-selection',
+                            options=[
+                                {'label': 'QB', 'value': 'QB'},
+                                {'label': 'RB', 'value': 'RB'},
+                                {'label': 'WR', 'value': 'WR'},
+                                {'label': 'TE', 'value': 'TE'}
+                            ],
+                            value='RB',
+                            inline=True,
+                            labelClassName="me-3",
+                            className="my-3"
+                        ),
+                        dcc.Loading(id='loading-efficiency-chart', type='circle',
+                                    children=dcc.Graph(id='efficiency-chart')),
+                        html.Hr(),
+                        dcc.Markdown("""
+                            This chart plots a player's actual fantasy points versus their expected points based on 
+                            their usage throughout the season.
                             
-                            **Weighted Opportunity Rating (WOPR)** is a metric measuring the not only how many targets a 
-                            player receives but also the quality of those targets (WOPR = (Target Share) + 0.7(Air Yard Share))
-                            
-                            **Receiving Yard Share** refers to a players share of actual receiving yards with respect to 
-                            the rest of the team. This measures the actual production of the player.
-                            """,
-                            style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px','padding-top': '10px'})
-                ]),
-                    # --- Rushing Share tab ---
-                    dcc.Tab(label='Rushing Share', className='custom-nested-tab',
-                            selected_className='custom-nested-tab-selected', children=[
-                            html.Br(),
-
-                            dcc.Loading(
-                                id='loading-rush-share-chart',
-                                type='circle',
-                                children=dcc.Graph(id='rush-share-chart')
-                            ),
-                            html.Hr(),
-                            dcc.Markdown("""
-                            This chart plots the share of opportunities a running back has on their team versus
-                            the their share of rushing production.
-                            
-                            **Rushing Attempt Share** refers to how often a player is is given a rushing attempt on their team.
-                            
-                            **Rushing Yard Share** refers to how many yards a runningback has rushed with respect to their team.
-                            """,
-                                         style={'color': 'grey', 'font-style': 'italic', 'padding-left': '25px',
-                                                'padding-top': '10px'})
-                ]),
+                            The dashed line represents the expected position of players based on historical data. 
+                            Due to the way that these probabilities are calculated and the randomness of football, 
+                            one should not expect most players lie below this line. Any player above it should be 
+                            expected to regress throughout the season/next season.
+                        """, className="text-muted fst-italic mt-3")
+                    ]),
+                # --- Receiving Share tab ---
+                dbc.Tab(label='Receiving Share', children=[
+                        dcc.Loading(id='loading-rec-share-chart', type='circle',
+                                    children=dcc.Graph(id='rec-share-chart'), className="my-3"),
+                        html.Hr(),
+                        dcc.Markdown("""
+                        This chart plots the quality of a players target share on their team versus their 
+                        receiving yard share.
+                        
+                        **Weighted Opportunity Rating (WOPR)** is a metric measuring the not only how many targets a 
+                        player receives but also the quality of those targets (WOPR = (Target Share) + 0.7(Air Yard Share))
+                        
+                        **Receiving Yard Share** refers to a players share of actual receiving yards with respect to 
+                        the rest of the team. This measures the actual production of the player.
+                        """,
+                                     className="text-muted fst-italic mt-3")
+                    ]),
+                # --- Rushing Share tab ---
+                dbc.Tab(label='Rushing Share', children=[
+                        dcc.Loading(id='loading-rush-share-chart', type='circle',
+                                    children=dcc.Graph(id='rush-share-chart'), className="my-3"),
+                        html.Hr(),
+                        dcc.Markdown("""
+                        This chart plots the share of opportunities a running back has on their team versus
+                        the their share of rushing production.
+                        
+                        **Rushing Attempt Share** refers to how often a player is is given a rushing attempt on their team.
+                        
+                        **Rushing Yard Share** refers to how many yards a runningback has rushed with respect to their team.
+                        """,
+                                     className="text-muted fst-italic mt-3")
+                    ]),
             ]),
         ]),
-    ]),
-])
+    ])
+], fluid=True)
 
 
 # --- Callbacks to Enable/Disable League-Specific Controls ---
 @app.callback(
     [Output('owner-name-dropdown', 'options'),
      Output('owner-name-dropdown', 'disabled'),
-     Output('show-taken-draft-checkbox', 'options'), # Control options to disable
+     Output('show-taken-draft-checkbox', 'options'),  # Control options to disable
      Output('show-taken-proj-checkbox', 'options')],  # Control options to disable
     [Input('league-id-input', 'value')]
 )
@@ -564,7 +441,7 @@ def update_owner_dropdown(league_id):
         owner_options = (
             league_df.select(pl.col('owner_name').alias('label'),
                              pl.col('owner_name').alias('value')).to_dicts())
-        checkbox_options = [{'label': 'Show Taken Players', 'value': 'show_taken'}] # Default control options to enable.
+        checkbox_options = [{'label': 'Show Taken Players', 'value': 'show_taken'}]  # Default control options to enable.
         # Enable the controls
         return owner_options, False, checkbox_options, checkbox_options
     # If no league_id, return empty owner options, disable owner dropdown, and disable checkboxes
@@ -610,15 +487,15 @@ def update_overview_tab(owner_name, draft_data):
 
     # 1. Load Data and Calculate Values
     board_df = pl.read_json(io.StringIO(draft_data))
-    
+
     # Check if we have ownership data
     if 'Owner' not in board_df.columns or board_df['Owner'][0] == 'N/A':
-         msg = html.Div("Please enter a valid League ID.", style={'textAlign': 'center', 'color': 'grey'})
-         return "Roster", msg, msg, go.Figure()
+        msg = html.Div("Please enter a valid League ID.", style={'textAlign': 'center', 'color': 'grey'})
+        return "Roster", msg, msg, go.Figure()
 
     # Calculate roster and team strengths
     user_roster, user_ranks, league_size = analyze_team(board_df, owner_name)
-    
+
     # --- Build Left Column: User's Roster ---
     roster_components = []
     for pos in ['QB', 'RB', 'WR', 'TE']:
@@ -632,13 +509,14 @@ def update_overview_tab(owner_name, draft_data):
                     html.Span(row['Player'], style={'fontWeight': 'bold'}),
                     html.Span(f" ({row['Value']})", style={'color': 'grey', 'fontSize': '0.9em'})
                 ], style={'display': 'flex', 'justifyContent': 'space-between', 'marginBottom': '2px'}))
-            
+
             roster_components.append(html.Div(player_list, style={'marginBottom': '15px'}))
 
     roster_title = f"{owner_name}'s Roster"
 
     # --- Build Right Column: Strength Analysis ---
     strength_components = []
+
     # Helper function for ordinal suffix (1st, 2nd, 3rd)
     def ordinal(n):
         return "%d%s" % (n, "tsnrhtdd"[(n // 10 % 10 != 1) * (n % 10 < 4) * n % 10::4])
@@ -650,11 +528,12 @@ def update_overview_tab(owner_name, draft_data):
             total_val = rank_row['Total Value'][0]
             avg_val = rank_row['Avg Value'][0]
             diff = total_val - avg_val
-            
+
             # Color code based on rank (Top third Green, Bottom third Red, else Orange)
             color = 'orange'
-            if rank <= league_size/3: color = '#28a745' # Green
-            elif rank >= (2*league_size)/3: color = '#dc3545' # Red
+            if rank <= league_size / 3: color = '#28a745'  # Green
+            elif rank >= (2 * league_size) / 3:
+                color = '#dc3545'  # Red
 
             diff_color = '#28a745' if diff >= 0 else '#dc3545'
             diff_sign = '+' if diff >= 0 else ''
@@ -664,7 +543,9 @@ def update_overview_tab(owner_name, draft_data):
                 html.H4(f"{ordinal(rank)}", style={'margin': '0', 'color': color, 'flex': 1, 'textAlign': 'center'}),
                 html.Div([
                     html.Span(f"Val: {total_val}", style={'color': 'grey', 'fontSize': '0.9em'}),
-                    html.Span(f" ({diff_sign}{int(diff)})", style={'color': diff_color, 'fontSize': '0.8em', 'marginLeft': '5px', 'fontWeight': 'bold'})
+                    html.Span(f" ({diff_sign}{int(diff)})",
+                              style={'color': diff_color, 'fontSize': '0.8em', 'marginLeft': '5px',
+                                     'fontWeight': 'bold'})
                 ], style={'display': 'flex', 'alignItems': 'baseline'})
             ], style={'display': 'flex', 'alignItems': 'center', 'borderBottom': '1px solid #444', 'padding': '10px 0'}))
 
@@ -698,7 +579,7 @@ def update_board_stores(league_data):
     draft_overall_data = draft_overall_board_df.write_json()
 
     # --- Create and store the full weekly board (all positions) ---
-    weekly_board_df = create_board(league_df=league_df, draft=False, positional=True) # positional is ignored
+    weekly_board_df = create_board(league_df=league_df, draft=False, positional=True)  # positional is ignored
     weekly_data = weekly_board_df.write_json()
 
     return draft_positional_data, draft_overall_data, weekly_data
@@ -806,7 +687,7 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value):
     """
     # Ensure all necessary inputs are provided before attempting to fetch data.
     if not all([weekly_data, position]):
-        return [], [], "", [] # Return empty list for styles
+        return [], [], "", []  # Return empty list for styles
 
     # Load the full board from the store
     board_df = pl.read_json(io.StringIO(weekly_data))
@@ -861,7 +742,7 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value):
     [
         Input('draft-positional-board-store', 'data'),
         Input('position-draft-tier-selection', 'value'),
-        Input('owner-name-dropdown', 'value') # Add owner name as an Input
+        Input('owner-name-dropdown', 'value')  # Add owner name as an Input
     ]
 )
 def update_draft_tier_chart(draft_data, position, owner_name):
@@ -1048,6 +929,7 @@ def update_rec_share_chart(owner_name, league_data):
 
     # Generate the Plotly figure, passing the owner_name for highlighting
     return create_rec_share_chart(share_df, user_name=owner_name)
+
 
 # --- Callback to Update Rushing Share Chart ---
 @app.callback(
