@@ -32,7 +32,7 @@ cache_dir = Path(__file__).resolve().parent / 'cache'
 update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True, cache_duration=3600)
 
 # Initialize the Dash application
-app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.SPACELAB])
+app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 # Server variable
 server = app.server
@@ -67,353 +67,390 @@ app.layout = dbc.Container([
 
     # --- Main Tabbed Interface ---
     dbc.Tabs([
-        # --- Top Level Tab: League Tools ---
-        dbc.Tab(label='League Tools', children=[
-            dbc.Tabs([
-                # --- Overview Tab ---
-                dbc.Tab(label='Overview', children=[
-                    dbc.Row([
-                        # Left Column: Roster
-                        dbc.Col([
-                            html.H3(id='overview-roster-title', children="Roster", className="text-center"),
+        # --- Overview Tab ---
+        dbc.Tab(label='Overview', children=[
+            dbc.Row([
+                # Left Column: Roster
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader(html.H4(id='overview-roster-title', children="Roster", className="m-0")),
+                        dbc.CardBody([
                             dcc.Loading(type='circle', children=html.Div(id='overview-roster-list'))
-                        ], md=6),
-                        # Right Column: Strength
-                        dbc.Col([
-                            html.H3("Positional Strength", className="text-center"),
+                        ])
+                    ], className="h-100")
+                ], md=6),
+                # Right Column: Strength
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader(html.H4("Positional Strength", className="m-0")),
+                        dbc.CardBody([
                             dcc.Loading(type='circle', children=html.Div(id='overview-strength-list')),
                             dcc.Loading(type='circle', children=dcc.Graph(id='overview-radar-chart'))
-                        ], md=6)
-                    ], className="mt-3")
-                ]),
-                # --- Trade Values tab ---
-                dbc.Tab(label='Trade Values', children=[
-                    dbc.Row([
-                        # QB Table
-                        dbc.Col([
-                            html.H4("Quarterback", className="text-center"),
+                        ])
+                    ], className="h-100")
+                ], md=6)
+            ], className="mt-3")
+        ]),
+        # --- Trade Values tab ---
+        dbc.Tab(label='Trade Values', children=[
+            dbc.Row([
+                # QB Table
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Quarterback", className="fw-bold text-center"),
+                        dbc.CardBody(
                             dcc.Loading(type='circle', children=dash_table.DataTable(
                                 id='trade-value-table-qb',
                                 style_table={'height': '600px', 'overflowY': 'auto'},
-                                style_header={'fontWeight': 'bold'},
-                                style_cell={'textAlign': 'left', 'padding': '5px'},
+                                style_header={'fontWeight': 'bold', 'borderBottom': '2px solid #dee2e6'},
+                                style_cell={'textAlign': 'left', 'padding': '10px'},
                                 style_cell_conditional=[
                                     {'if': {'column_id': 'Player'}, 'width': '50%'},
                                     {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
                                 ],
                                 style_as_list_view=True,
-                                style_data={'backgroundColor': 'transparent'},
-                            )),
-                        ], md=3),
-                        # RB Table
-                        dbc.Col([
-                            html.H4("Running Back", className="text-center"),
+                            ))
+                        )
+                    ])
+                ], md=3),
+                # RB Table
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Running Back", className="fw-bold text-center"),
+                        dbc.CardBody(
                             dcc.Loading(type='circle', children=dash_table.DataTable(
                                 id='trade-value-table-rb',
                                 style_table={'height': '600px', 'overflowY': 'auto'},
-                                style_header={'fontWeight': 'bold'},
-                                style_cell={'textAlign': 'left', 'padding': '5px'},
+                                style_header={'fontWeight': 'bold', 'borderBottom': '2px solid #dee2e6'},
+                                style_cell={'textAlign': 'left', 'padding': '10px'},
                                 style_cell_conditional=[
                                     {'if': {'column_id': 'Player'}, 'width': '50%'},
                                     {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
                                 ],
                                 style_as_list_view=True,
-                                style_data={'backgroundColor': 'transparent'},
-                            )),
-                        ], md=3),
-                        # WR Table
-                        dbc.Col([
-                            html.H4("Wide Receiver", className="text-center"),
+                            ))
+                        )
+                    ])
+                ], md=3),
+                # WR Table
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Wide Receiver", className="fw-bold text-center"),
+                        dbc.CardBody(
                             dcc.Loading(type='circle', children=dash_table.DataTable(
                                 id='trade-value-table-wr',
                                 style_table={'height': '600px', 'overflowY': 'auto'},
-                                style_header={'fontWeight': 'bold'},
-                                style_cell={'textAlign': 'left', 'padding': '5px'},
+                                style_header={'fontWeight': 'bold', 'borderBottom': '2px solid #dee2e6'},
+                                style_cell={'textAlign': 'left', 'padding': '10px'},
                                 style_cell_conditional=[
                                     {'if': {'column_id': 'Player'}, 'width': '50%'},
                                     {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
                                 ],
                                 style_as_list_view=True,
-                                style_data={'backgroundColor': 'transparent'},
-                            )),
-                        ], md=3),
-                        # TE Table
-                        dbc.Col([
-                            html.H4("Tight End", className="text-center"),
+                            ))
+                        )
+                    ])
+                ], md=3),
+                # TE Table
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Tight End", className="fw-bold text-center"),
+                        dbc.CardBody(
                             dcc.Loading(type='circle', children=dash_table.DataTable(
                                 id='trade-value-table-te',
                                 style_table={'height': '600px', 'overflowY': 'auto'},
-                                style_header={'fontWeight': 'bold'},
-                                style_cell={'textAlign': 'left', 'padding': '5px'},
+                                style_header={'fontWeight': 'bold', 'borderBottom': '2px solid #dee2e6'},
+                                style_cell={'textAlign': 'left', 'padding': '10px'},
                                 style_cell_conditional=[
                                     {'if': {'column_id': 'Player'}, 'width': '50%'},
                                     {'if': {'column_id': ['Age', 'Value']}, 'width': '25%'}
                                 ],
                                 style_as_list_view=True,
-                                style_data={'backgroundColor': 'transparent'},
-                            )),
-                        ], md=3),
-                    ], className="mt-3"),
-                    html.Hr(),
-                    dcc.Markdown("""
-                    Trade values are based on overall dynasty ECR values. They will (possibly over)emphasize long term value
-                    over short-term gain.
-                    """, className="text-muted fst-italic mt-3")
-                ]),
-            ]),
+                            ))
+                        )
+                    ])
+                ], md=3),
+            ], className="mt-3"),
+            html.Hr(),
+            dcc.Markdown("""
+            Trade values are based on overall dynasty ECR values. They will (possibly over)emphasize long term value
+            over short-term gain.
+            """, className="text-muted fst-italic mt-3")
         ]),
-        # --- Top Level Tab: Draft Tools ---
-        dbc.Tab(label='Draft Tools', children=[
-            dbc.Tabs([
-                # --- Draft Board tab ---
-                dbc.Tab(label='Draft Board', children=[
-                    dbc.Row([
-                        dbc.Col(dbc.RadioItems(
-                            id='position-draft-selection',
-                            options=[
-                                {'label': 'Overall', 'value': 'Overall'},
-                                {'label': 'Quarterback', 'value': 'QB'},
-                                {'label': 'Running Back', 'value': 'RB'},
-                                {'label': 'Wide Receiver', 'value': 'WR'},
-                                {'label': 'Tight End', 'value': 'TE'},
-                            ],
-                            value='Overall',
-                            inline=True,
-                            labelClassName="me-3"
-                        ), width="auto"),
-                        dbc.Col(dbc.Checklist(
-                            id='show-taken-draft-checkbox',
-                            options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
-                            value=[],
-                        ), width="auto"),
-                    ], justify="between", align="center", className="my-3"),
-                    dcc.Loading(
-                        id='loading-draft-table',
-                        type='circle',
-                        children=[
-                            html.Div(id='draft-last-update', className="text-end text-muted fst-italic mb-1"),
-                            dash_table.DataTable(
-                                id='draft-table',
-                                style_data_conditional=[],
-                                style_table={'overflowX': 'auto'},
-                                style_header={'fontWeight': 'bold'},
-                                style_cell={'textAlign': 'left', 'padding': '5px', 'whiteSpace': 'normal', 'height': 'auto'},
-                                style_cell_conditional=[
-                                    {'if': {'column_id': ['Player', 'Owner']}, 'width': '180px', 'minWidth': '180px', 'maxWidth': '250px'},
-                                    {'if': {'column_id': ['Pos', 'Team', 'ECR', 'Best', 'Worst', 'Std', 'Age', 'Bye']}, 'width': '80px', 'minWidth': '80px', 'maxWidth': '80px'}
+        # --- Draft Tab ---
+        dbc.Tab(label='Draft Board', children=[
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Draft Board"),
+                        dbc.CardBody([
+                            dbc.Row([
+                                dbc.Col(dbc.RadioItems(
+                                    id='position-draft-selection',
+                                    options=[
+                                        {'label': 'Overall', 'value': 'Overall'},
+                                        {'label': 'Quarterback', 'value': 'QB'},
+                                        {'label': 'Running Back', 'value': 'RB'},
+                                        {'label': 'Wide Receiver', 'value': 'WR'},
+                                        {'label': 'Tight End', 'value': 'TE'},
+                                    ],
+                                    value='Overall',
+                                    inline=True,
+                                    labelClassName="me-3"
+                                ), width="auto"),
+                                dbc.Col(dbc.Checklist(
+                                    id='show-taken-draft-checkbox',
+                                    options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
+                                    value=[],
+                                ), width="auto"),
+                            ], justify="between", align="center", className="my-3"),
+                            dcc.Loading(
+                                id='loading-draft-table',
+                                type='circle',
+                                children=[
+                                    html.Div(id='draft-last-update', className="text-end text-muted fst-italic mb-1"),
+                                    dash_table.DataTable(
+                                        id='draft-table',
+                                        style_data_conditional=[],
+                                        style_table={'overflowX': 'auto'},
+                                        style_header={'fontWeight': 'bold', 'borderBottom': '2px solid #dee2e6'},
+                                        style_cell={'textAlign': 'left', 'padding': '10px', 'whiteSpace': 'normal', 'height': 'auto'},
+                                        style_cell_conditional=[
+                                            {'if': {'column_id': ['Player', 'Owner']}, 'width': '180px', 'minWidth': '180px', 'maxWidth': '250px'},
+                                            {'if': {'column_id': ['Pos', 'Team', 'ECR', 'Best', 'Worst', 'Std', 'Age', 'Bye']}, 'width': '80px', 'minWidth': '80px', 'maxWidth': '80px'}
+                                        ],
+                                        style_as_list_view=True,
+                                    )
+                                ]
+                            ),
+                            html.Hr(),
+                            dcc.Markdown("""
+                            Note: This table does not take into consideration in-season performance. It should be considered 
+                            outdated following the first week of play.
+                        
+                            *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
+                            *   **Best/Worst**: Most optimistic (lowest)/pessimistic (highest) ranking given to a player by any one expert.
+                            *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
+                        
+                            """, className="text-muted fst-italic mt-3")
+                        ])
+                    ], className="mt-3")
+                ], md=6),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Draft Tiers"),
+                        dbc.CardBody([
+                            dbc.RadioItems(
+                                id='position-draft-tier-selection',
+                                options=[
+                                    {'label': 'Quarterback', 'value': 'QB'},
+                                    {'label': 'Running Back', 'value': 'RB'},
+                                    {'label': 'Wide Receiver', 'value': 'WR'},
+                                    {'label': 'Tight End', 'value': 'TE'},
                                 ],
-                                style_as_list_view=True,
-                                style_data={'backgroundColor': 'transparent'},
-                            )
-                        ]
-                    ),
-                    html.Hr(),
-                    dcc.Markdown("""
-                    Note: This table does not take into consideration in-season performance. It should be considered 
-                    outdated following the first week of play.
-                
-                    *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
-                    *   **Best/Worst**: Most optimistic (lowest)/pessimistic (highest) ranking given to a player by any one expert.
-                    *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
-                
-                    """, className="text-muted fst-italic mt-3")
-                ]),
-                # --- Draft Tiers tab ---
-                dbc.Tab(label='Draft Tiers', children=[
-                    dbc.RadioItems(
-                        id='position-draft-tier-selection',
-                        options=[
-                            {'label': 'Quarterback', 'value': 'QB'},
-                            {'label': 'Running Back', 'value': 'RB'},
-                            {'label': 'Wide Receiver', 'value': 'WR'},
-                            {'label': 'Tight End', 'value': 'TE'},
-                        ],
-                        value='QB',
-                        inline=True,
-                        labelClassName="me-3",
-                        className="my-3"
-                    ),
-                    dcc.Loading(id='loading-draft-tier-chart', type='circle', children=dcc.Graph(id='draft-tier-chart-graph')),
-                    html.Hr(),
-                    dcc.Markdown("""
-                    Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
-                    cluster players into statistically similar tiers. This should be viewed as a measure of how similar any two 
-                    players are ranked by FantasyPros.
-                
-                    Inspired by analysis of Boris Chen, see www.borischen.co
-                    
-                    Note: This does not take into consideration in-season performance. It should be considered 
-                    outdated following the first week of play.
-                    """, className="text-muted fst-italic mt-3")
-
-                ]),
-            ]),
-        ]),
-        # --- Top Level Tab: In-Season Tools ---
-        dbc.Tab(label='In-Season Tools', children=[
-            dbc.Tabs([
-                # --- Weekly Projections tab ---
-                dbc.Tab(label='Weekly Projections', children=[
-                    dbc.Row([
-                        dbc.Col(dbc.RadioItems(
-                            id='position-proj-selection',
-                            options=[
-                                {'label': 'Quarterback', 'value': 'QB'},
-                                {'label': 'Running Back', 'value': 'RB'},
-                                {'label': 'Wide Receiver', 'value': 'WR'},
-                                {'label': 'Tight End', 'value': 'TE'},
-                            ],
-                            value='QB',
-                            inline=True,
-                            labelClassName="me-3"
-                        ), width="auto"),
-                        dbc.Col(dbc.Checklist(
-                            id='show-taken-proj-checkbox',
-                            options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
-                            value=[],
-                        ), width="auto"),
-                    ], justify="between", align="center", className="my-3"),
-
-                    dcc.Loading(
-                        id='loading-proj-table',
-                        type='circle',
-                        children=[
-                            html.Div(id='proj-last-update', className="text-end text-muted fst-italic mb-1"),
-                            dash_table.DataTable(
-                                id='proj-table',
-                                style_data_conditional=[],
-                                style_table={'overflowX': 'auto'},
-                                style_header={
-                                    'fontWeight': 'bold'
-                                },
-                                style_cell={
-                                    'textAlign': 'left',
-                                    'padding': '5px',
-                                    'whiteSpace': 'normal',
-                                    'height': 'auto',
-                                },
-                                style_cell_conditional=[
-                                    {
-                                        'if': {'column_id': ['Player', 'Owner']},
-                                        'width': '150px', 'minWidth': '150px', 'maxWidth': '250px',
-                                    },
-                                    {
-                                        'if': {
-                                            'column_id': ['ECR', 'Team', 'Opponent', 'Start Grade', 'Best', 'Worst',
-                                                          'Std', 'Rank', 'Proj. Points']},
-                                        'width': '80px', 'minWidth': '80px', 'maxWidth': '80px',
-                                    }
-                                ],
-                                style_as_list_view=True,
-                                style_data={'backgroundColor': 'transparent'},
-                            )
-                        ]
-                    ),
-
-                    html.Hr(),
-                    dcc.Markdown("""
-                    Note: "Last Update" refers to the last update of data provided by FantasyPros. This application has no 
-                    control over the frequency of such updates.
-                
-                    *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
-                    *   **Best**: Most optimistic (lowest) ranking given to a player by any one expert.
-                    *   **Worst**: Most pessimistic (highest) ranking given to a player by any one expert.
-                    *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
-                
-                    """, className="text-muted fst-italic mt-3")
-                ]),
-                # --- Weekly Tiers tab ---
-                dbc.Tab(label='Weekly Tiers', children=[
-                    dbc.RadioItems(
-                        id='position-weekly-tier-selection',
-                        options=[
-                            {'label': 'Quarterback', 'value': 'QB'},
-                            {'label': 'Running Back', 'value': 'RB'},
-                            {'label': 'Wide Receiver', 'value': 'WR'},
-                            {'label': 'Tight End', 'value': 'TE'},
-                        ],
-                        value='QB',
-                        inline=True,
-                        labelClassName="me-3",
-                        className="my-3"
-                    ),
-                    dcc.Loading(id='loading-weekly-tier-chart', type='circle',
-                                children=dcc.Graph(id='weekly-tier-chart-graph')),
-                    html.Hr(),
-                    dcc.Markdown("""
-                    Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
-                    cluster players into statistically similar tiers. This should be viewed as a measure of how similar any two 
-                    players are ranked by FantasyPros.
-                
-                    Inspired by analysis of Boris Chen, see www.borischen.co
-                    """, className="text-muted fst-italic mt-3")
-                ]),
-            ]),
-        ]),
-        # --- Top Level Tab: Advanced Stats ---
-        dbc.Tab(label='Advanced Stats', children=[
-            dbc.Tabs([
-                # --- Weekly Efficiency Tab ---
-                dbc.Tab(label='Fantasy Efficiency', children=[
-                        dbc.RadioItems(
-                            id='position-efficiency-selection',
-                            options=[
-                                {'label': 'QB', 'value': 'QB'},
-                                {'label': 'RB', 'value': 'RB'},
-                                {'label': 'WR', 'value': 'WR'},
-                                {'label': 'TE', 'value': 'TE'}
-                            ],
-                            value='RB',
-                            inline=True,
-                            labelClassName="me-3",
-                            className="my-3"
-                        ),
-                        dcc.Loading(id='loading-efficiency-chart', type='circle',
-                                    children=dcc.Graph(id='efficiency-chart')),
-                        html.Hr(),
-                        dcc.Markdown("""
-                            This chart plots a player's actual fantasy points versus their expected points based on 
-                            their usage throughout the season.
+                                value='QB',
+                                inline=True,
+                                labelClassName="me-3",
+                                className="my-3"
+                            ),
+                            dcc.Loading(id='loading-draft-tier-chart', type='circle', children=dcc.Graph(id='draft-tier-chart-graph')),
+                            html.Hr(),
+                            dcc.Markdown("""
+                            Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
+                            cluster players into statistically similar tiers. This should be viewed as a measure of how similar any two 
+                            players are ranked by FantasyPros.
+                        
+                            Inspired by analysis of Boris Chen, see www.borischen.co
                             
-                            The dashed line represents the expected position of players based on historical data. 
-                            Due to the way that these probabilities are calculated and the randomness of football, 
-                            one should not expect most players lie below this line. Any player above it should be 
-                            expected to regress throughout the season/next season.
-                        """, className="text-muted fst-italic mt-3")
-                    ]),
-                # --- Receiving Share tab ---
-                dbc.Tab(label='Receiving Share', children=[
-                        dcc.Loading(id='loading-rec-share-chart', type='circle',
-                                    children=dcc.Graph(id='rec-share-chart'), className="my-3"),
-                        html.Hr(),
-                        dcc.Markdown("""
-                        This chart plots the quality of a players target share on their team versus their 
-                        receiving yard share.
+                            Note: This does not take into consideration in-season performance. It should be considered 
+                            outdated following the first week of play.
+                            """, className="text-muted fst-italic mt-3")
+                        ])
+                    ], className="mt-3")
+                ], md=6)
+            ])
+        ]),
+        # --- Weekly Tab ---
+        dbc.Tab(label='Weekly Projections', children=[
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Weekly Rankings"),
+                        dbc.CardBody([
+                            dbc.Row([
+                                dbc.Col(dbc.RadioItems(
+                                    id='position-proj-selection',
+                                    options=[
+                                        {'label': 'Quarterback', 'value': 'QB'},
+                                        {'label': 'Running Back', 'value': 'RB'},
+                                        {'label': 'Wide Receiver', 'value': 'WR'},
+                                        {'label': 'Tight End', 'value': 'TE'},
+                                    ],
+                                    value='QB',
+                                    inline=True,
+                                    labelClassName="me-3"
+                                ), width="auto"),
+                                dbc.Col(dbc.Checklist(
+                                    id='show-taken-proj-checkbox',
+                                    options=[{'label': 'Show Taken Players', 'value': 'show_taken'}],
+                                    value=[],
+                                ), width="auto"),
+                            ], justify="between", align="center", className="my-3"),
+
+                            dcc.Loading(
+                                id='loading-proj-table',
+                                type='circle',
+                                children=[
+                                    html.Div(id='proj-last-update', className="text-end text-muted fst-italic mb-1"),
+                                    dash_table.DataTable(
+                                        id='proj-table',
+                                        style_data_conditional=[],
+                                        style_table={'overflowX': 'auto'},
+                                        style_header={'fontWeight': 'bold', 'borderBottom': '2px solid #dee2e6'},
+                                        style_cell={'textAlign': 'left', 'padding': '10px', 'whiteSpace': 'normal', 'height': 'auto'},
+                                        style_cell_conditional=[
+                                            {
+                                                'if': {'column_id': ['Player', 'Owner']},
+                                                'width': '150px', 'minWidth': '150px', 'maxWidth': '250px',
+                                            },
+                                            {
+                                                'if': {
+                                                    'column_id': ['ECR', 'Team', 'Opponent', 'Start Grade', 'Best', 'Worst',
+                                                                  'Std', 'Rank', 'Proj. Points']},
+                                                'width': '80px', 'minWidth': '80px', 'maxWidth': '80px',
+                                            }
+                                        ],
+                                        style_as_list_view=True,
+                                    )
+                                ]
+                            ),
+
+                            html.Hr(),
+                            dcc.Markdown("""
+                            Note: "Last Update" refers to the last update of data provided by FantasyPros. This application has no 
+                            control over the frequency of such updates.
                         
-                        **Weighted Opportunity Rating (WOPR)** is a metric measuring the not only how many targets a 
-                        player receives but also the quality of those targets (WOPR = (Target Share) + 0.7(Air Yard Share))
+                            *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
+                            *   **Best**: Most optimistic (lowest) ranking given to a player by any one expert.
+                            *   **Worst**: Most pessimistic (highest) ranking given to a player by any one expert.
+                            *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
                         
-                        **Receiving Yard Share** refers to a players share of actual receiving yards with respect to 
-                        the rest of the team. This measures the actual production of the player.
-                        """,
-                                     className="text-muted fst-italic mt-3")
-                    ]),
-                # --- Rushing Share tab ---
-                dbc.Tab(label='Rushing Share', children=[
-                        dcc.Loading(id='loading-rush-share-chart', type='circle',
-                                    children=dcc.Graph(id='rush-share-chart'), className="my-3"),
-                        html.Hr(),
-                        dcc.Markdown("""
-                        This chart plots the share of opportunities a running back has on their team versus
-                        the their share of rushing production.
+                            """, className="text-muted fst-italic mt-3")
+                        ])
+                    ], className="mt-3")
+                ], md=6),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Weekly Tiers"),
+                        dbc.CardBody([
+                            dbc.RadioItems(
+                                id='position-weekly-tier-selection',
+                                options=[
+                                    {'label': 'Quarterback', 'value': 'QB'},
+                                    {'label': 'Running Back', 'value': 'RB'},
+                                    {'label': 'Wide Receiver', 'value': 'WR'},
+                                    {'label': 'Tight End', 'value': 'TE'},
+                                ],
+                                value='QB',
+                                inline=True,
+                                labelClassName="me-3",
+                                className="my-3"
+                            ),
+                            dcc.Loading(id='loading-weekly-tier-chart', type='circle',
+                                        children=dcc.Graph(id='weekly-tier-chart-graph')),
+                            html.Hr(),
+                            dcc.Markdown("""
+                            Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
+                            cluster players into statistically similar tiers. This should be viewed as a measure of how similar any two 
+                            players are ranked by FantasyPros.
                         
-                        **Rushing Attempt Share** refers to how often a player is is given a rushing attempt on their team.
-                        
-                        **Rushing Yard Share** refers to how many yards a runningback has rushed with respect to their team.
-                        """,
-                                     className="text-muted fst-italic mt-3")
-                    ]),
+                            Inspired by analysis of Boris Chen, see www.borischen.co
+                            """, className="text-muted fst-italic mt-3")
+                        ])
+                    ], className="mt-3")
+                ], md=6)
+            ])
+        ]),
+        # --- Advanced Stats Tab ---
+        dbc.Tab(label='Advanced Stats', children=[
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Fantasy Efficiency"),
+                        dbc.CardBody([
+                            dbc.RadioItems(
+                                id='position-efficiency-selection',
+                                options=[
+                                    {'label': 'QB', 'value': 'QB'},
+                                    {'label': 'RB', 'value': 'RB'},
+                                    {'label': 'WR', 'value': 'WR'},
+                                    {'label': 'TE', 'value': 'TE'}
+                                ],
+                                value='RB',
+                                inline=True,
+                                labelClassName="me-3",
+                                className="my-3"
+                            ),
+                            dcc.Loading(id='loading-efficiency-chart', type='circle',
+                                        children=dcc.Graph(id='efficiency-chart')),
+                            html.Hr(),
+                            dcc.Markdown("""
+                                This chart plots a player's actual fantasy points versus their expected points based on 
+                                their usage throughout the season.
+                                
+                                The dashed line represents the expected position of players based on historical data. 
+                                Due to the way that these probabilities are calculated and the randomness of football, 
+                                one should not expect most players lie below this line. Any player above it should be 
+                                expected to regress throughout the season/next season.
+                            """, className="text-muted fst-italic mt-3")
+                        ])
+                    ], className="mt-3")
+                ], width=12)
             ]),
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Receiving Share"),
+                        dbc.CardBody([
+                            dcc.Loading(id='loading-rec-share-chart', type='circle',
+                                        children=dcc.Graph(id='rec-share-chart'), className="my-3"),
+                            html.Hr(),
+                            dcc.Markdown("""
+                            This chart plots the quality of a players target share on their team versus their 
+                            receiving yard share.
+                            
+                            **Weighted Opportunity Rating (WOPR)** is a metric measuring the not only how many targets a 
+                            player receives but also the quality of those targets (WOPR = (Target Share) + 0.7(Air Yard Share))
+                            
+                            **Receiving Yard Share** refers to a players share of actual receiving yards with respect to 
+                            the rest of the team. This measures the actual production of the player.
+                            """,
+                                         className="text-muted fst-italic mt-3")
+                        ])
+                    ], className="mt-3")
+                ], width=12)
+            ]),
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Rushing Share"),
+                        dbc.CardBody([
+                            dcc.Loading(id='loading-rush-share-chart', type='circle',
+                                        children=dcc.Graph(id='rush-share-chart'), className="my-3"),
+                            html.Hr(),
+                            dcc.Markdown("""
+                            This chart plots the share of opportunities a running back has on their team versus
+                            the their share of rushing production.
+                            
+                            **Rushing Attempt Share** refers to how often a player is is given a rushing attempt on their team.
+                            
+                            **Rushing Yard Share** refers to how many yards a runningback has rushed with respect to their team.
+                            """,
+                                         className="text-muted fst-italic mt-3")
+                        ])
+                    ], className="mt-3")
+                ], width=12)
+            ])
         ]),
     ])
 ], fluid=True)
