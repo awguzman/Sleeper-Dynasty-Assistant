@@ -65,6 +65,11 @@ app.layout = dbc.Container([
         ]), md=6),
     ], className="mb-3"),
 
+    # --- League ID Alert ---
+    dbc.Row([
+        dbc.Col(dbc.Alert(id='league-id-alert', is_open=False, duration=4000), width=12)
+    ]),
+
     # --- Main Tabbed Interface ---
     dbc.Tabs([
         # --- Overview Tab ---
@@ -229,8 +234,7 @@ app.layout = dbc.Container([
                             outdated following the first week of play.
                         
                             *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
-                            *   **Best/Worst**: Most optimistic (lowest)/pessimistic (highest) ranking given to a player by any one expert.
-                            *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
+                            *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement among experts. 
                         
                             """, className="text-muted fst-italic mt-3")
                         ])
@@ -258,7 +262,8 @@ app.layout = dbc.Container([
                             dcc.Markdown("""
                             Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
                             cluster players into statistically similar tiers. This should be viewed as a measure of how similar any two 
-                            players are ranked by FantasyPros.
+                            players are ranked by FantasyPros.The left most end of a players error bar measures the most optimistic 
+                            expert ranking, likewise, the right most end measures the least optimistic ranking.
                         
                             Inspired by analysis of Boris Chen, see www.borischen.co
                             
@@ -331,9 +336,7 @@ app.layout = dbc.Container([
                             control over the frequency of such updates.
                         
                             *   **ECR**: Expert Consensus Ranking. The (weighted) average rank given to a player from all experts surveyed by FantasyPros.
-                            *   **Best**: Most optimistic (lowest) ranking given to a player by any one expert.
-                            *   **Worst**: Most pessimistic (highest) ranking given to a player by any one expert.
-                            *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement. 
+                            *   **Std**: Standard deviation of rankings given to a player from all experts. Smaller values mean higher agreement among experts. 
                         
                             """, className="text-muted fst-italic mt-3")
                         ])
@@ -362,7 +365,8 @@ app.layout = dbc.Container([
                             dcc.Markdown("""
                             Uses a Gaussian Mixture Model (GMM) together with Bayesian Information Criterion (BIC) to dynamically 
                             cluster players into statistically similar tiers. This should be viewed as a measure of how similar any two 
-                            players are ranked by FantasyPros.
+                            players are ranked by FantasyPros. The left most end of a players error bar measures the most optimistic 
+                            expert ranking, likewise, the right most end measures the least optimistic ranking.
                         
                             Inspired by analysis of Boris Chen, see www.borischen.co
                             """, className="text-muted fst-italic mt-3")
@@ -461,7 +465,10 @@ app.layout = dbc.Container([
     [Output('owner-name-dropdown', 'options'),
      Output('owner-name-dropdown', 'disabled'),
      Output('show-taken-draft-checkbox', 'options'),  # Control options to disable
-     Output('show-taken-proj-checkbox', 'options')],  # Control options to disable
+     Output('show-taken-proj-checkbox', 'options'),  # Control options to disable
+     Output('league-id-alert', 'children'),
+     Output('league-id-alert', 'is_open'),
+     Output('league-id-alert', 'color')],
     [Input('league-id-input', 'value')]
 )
 def update_owner_dropdown(league_id):
@@ -473,16 +480,23 @@ def update_owner_dropdown(league_id):
     It fetches the league's user data and formats it for the dropdown.
     """
     # Prevent callback from firing with an empty league ID.
-    if league_id:
-        league_df = get_league_info(league_id)
+    if not league_id:
+        return [], True, [], [], None, False, ""
+
+    league_df = get_league_info(league_id)
+
+    if league_df.is_empty():
+        # Invalid League ID
+        return ([], True, [], [],
+                "Invalid League ID provided. Please check the ID and try again.", True, "danger")
+    else:
         owner_options = (
             league_df.select(pl.col('owner_name').alias('label'),
                              pl.col('owner_name').alias('value')).to_dicts())
         checkbox_options = [{'label': 'Show Taken Players', 'value': 'show_taken'}]  # Default control options to enable.
-        # Enable the controls
-        return owner_options, False, checkbox_options, checkbox_options
-    # If no league_id, return empty owner options, disable owner dropdown, and disable checkboxes
-    return [], True, [], []
+        # Enable the controls on success
+        return (owner_options, False, checkbox_options, checkbox_options,
+                "League data loaded successfully!", True, "success")
 
 
 # --- Callback to fetch and store league-specific data ---
@@ -675,7 +689,7 @@ def update_draft_table(owner_name, draft_positional_data, draft_overall_data, po
 
     # --- Generate Conditional Styling & Final Columns ---
     styles = []
-    columns_to_drop = ['fantasypros_id', 'scrape_date']
+    columns_to_drop = ['fantasypros_id','Best', 'Worst', 'scrape_date']
 
     # Only apply ownership styling and show Owner column if a league is active
     if 'Owner' in board_df.columns and board_df['Owner'][0] != 'N/A':
@@ -748,7 +762,7 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value):
 
     # --- Generate Conditional Styling & Final Columns ---
     styles = []
-    columns_to_drop = ['fantasypros_id', 'scrape_date', 'Pos']
+    columns_to_drop = ['fantasypros_id', 'Best', 'Worst', 'scrape_date', 'Pos']
 
     # Only apply ownership styling and show Owner column if a league is active
     if 'Owner' in board_df.columns and board_df['Owner'][0] != 'N/A':
@@ -991,7 +1005,6 @@ def update_rush_share_chart(owner_name, league_data):
     return create_rush_share_chart(share_df, user_name=owner_name)
 
 
-# --- Run the Application ---
-# This block allows the script to be run directly to start the development server.
+# --- Run debug Application ---
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
