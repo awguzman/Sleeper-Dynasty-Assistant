@@ -20,7 +20,7 @@ def compute_efficiency(league_df: pl.DataFrame | None) -> pl.DataFrame:
     Returns:
         pl.DataFrame: A DataFrame containing player efficiency metrics.
     """
-    season = get_current_season(roster=True) # This updates right before the start of week 1.
+    season = get_current_season(roster=False) # This updates right before the start of week 1.
     opp_features = ['season', 'week', 'player_id', 'full_name', 'position', 'total_fantasy_points', 'total_fantasy_points_exp']
 
     # Load player opportunity data for the selected season.
