@@ -3,6 +3,7 @@ This module defines the layout and callback logic for the Sleeper Dynasty Assist
 """
 
 # --- Backend Imports ---
+import logging
 import polars as pl
 import io
 
@@ -24,12 +25,19 @@ from src.visualizations import (create_tier_chart, create_efficiency_chart,
                                 create_rec_share_chart, create_rush_share_chart,
                                 create_team_radar_chart)
 
+# --- Configure Logging ---
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # --- Configure nflreadpy Cache ---
 from pathlib import Path
 from nflreadpy.config import update_config
 
 cache_dir = Path(__file__).resolve().parent / 'cache'
-update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True, cache_duration=3600)
+update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True, cache_duration=43200) # R
 
 # Initialize the Dash application
 app = dash.Dash(__name__, suppress_callback_exceptions=False, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -57,7 +65,8 @@ app.layout = dbc.Container([
     dbc.Row([
         dbc.Col(dbc.InputGroup([
             dbc.InputGroupText("Sleeper League ID"),
-            dbc.Input(id="league-id-input", placeholder="e.g., 992016434344030208"),
+            dbc.Input(id="league-id-input", placeholder="e.g., 992016434344030208", type="text"),
+            dbc.Button("Load League", id="load-league-button", color="primary", n_clicks=0),
         ]), md=6),
         dbc.Col(dbc.InputGroup([
             dbc.InputGroupText("Select Owner"),
@@ -483,9 +492,11 @@ app.layout = dbc.Container([
      Output('league-id-alert', 'children'),
      Output('league-id-alert', 'is_open'),
      Output('league-id-alert', 'color')],
-    [Input('league-id-input', 'value')]
+    [Input('load-league-button', 'n_clicks'),
+     Input('league-id-input', 'n_submit')],
+    [State('league-id-input', 'value')]
 )
-def update_owner_dropdown(league_id):
+def update_owner_dropdown(n_clicks, n_submit, league_id):
     """
     Populates the owner ID dropdown based on the entered league ID. If no league_id provided,
     disable the dropdown along with the show_taken checkboxes.
@@ -497,20 +508,30 @@ def update_owner_dropdown(league_id):
     if not league_id:
         return [], True, [], [], None, False, ""
 
-    league_df = get_league_info(league_id)
+    # Log the attempt to load league data
+    logger.info(f"Attempting to load league data for ID: {league_id}")
 
-    if league_df.is_empty():
-        # Invalid League ID
+    try:
+        league_df = get_league_info(league_id)
+
+        if league_df.is_empty():
+            logger.warning(f"No league data found for ID: {league_id}")
+            # Invalid League ID
+            return ([], True, [], [],
+                    "Invalid League ID provided. Please check the ID and try again.", True, "danger")
+        else:
+            logger.info(f"Successfully loaded league data for ID: {league_id}")
+            owner_options = (
+                league_df.select(pl.col('owner_name').alias('label'),
+                                 pl.col('owner_name').alias('value')).to_dicts())
+            checkbox_options = [{'label': 'Show Taken Players', 'value': 'show_taken'}]  # Default control options to enable.
+            # Enable the controls on success
+            return (owner_options, False, checkbox_options, checkbox_options,
+                    "League data loaded successfully!", True, "success")
+    except Exception as e:
+        logger.error(f"Error loading league data for ID {league_id}: {e}")
         return ([], True, [], [],
-                "Invalid League ID provided. Please check the ID and try again.", True, "danger")
-    else:
-        owner_options = (
-            league_df.select(pl.col('owner_name').alias('label'),
-                             pl.col('owner_name').alias('value')).to_dicts())
-        checkbox_options = [{'label': 'Show Taken Players', 'value': 'show_taken'}]  # Default control options to enable.
-        # Enable the controls on success
-        return (owner_options, False, checkbox_options, checkbox_options,
-                "League data loaded successfully!", True, "success")
+                "An error occurred while loading league data.", True, "danger")
 
 
 # --- Callback to Check for Offseason/Empty Data ---
@@ -532,27 +553,32 @@ def check_offseason_data(pos_data):
         
         # If the dataframe is empty (no rows/columns) or missing the key 'Pos' column
         if df.is_empty() or 'Pos' not in df.columns:
+            logger.info("Offseason data detected: Positional draft board is empty or missing 'Pos' column.")
             return True
             
         return False
 
-    except Exception:
+    except Exception as e:
         # If any error occurs reading the data, assume it's invalid/empty
+        logger.error(f"Error checking offseason data: {e}")
         return True
 
 
 # --- Callback to fetch and store league-specific data ---
 @app.callback(
     Output('league-info-store', 'data'),
-    Input('league-id-input', 'value')
+    [Input('load-league-button', 'n_clicks'),
+     Input('league-id-input', 'n_submit')],
+    [State('league-id-input', 'value')]
 )
-def update_league_store(league_id):
+def update_league_store(n_clicks, n_submit, league_id):
     """
     Fetches league data from the Sleeper API when the league_id changes and stores it as JSON in a dcc.Store.
     """
     if not league_id:
         return None  # Return None if no ID is provided
 
+    logger.info(f"Fetching league info store for ID: {league_id}")
     league_df = get_league_info(league_id)
     return league_df.write_json()
 
@@ -677,6 +703,7 @@ def update_board_stores(league_data):
     This master callback runs the expensive computations once and stores the results.
     It's triggered when the league data becomes available.
     """
+    logger.info("Updating board stores.")
     league_df = pl.read_json(io.StringIO(league_data)) if league_data else None
 
     # --- Create and store the full positional draft board ---
@@ -690,6 +717,8 @@ def update_board_stores(league_data):
     # --- Create and store the full weekly board (all positions) ---
     weekly_board_df = create_board(league_df=league_df, draft=False, positional=True)  # positional is ignored
     weekly_data = weekly_board_df.write_json()
+    
+    logger.info("Board stores updated.")
 
     return draft_positional_data, draft_overall_data, weekly_data
 
