@@ -425,7 +425,7 @@ def create_team_radar_chart(user_ranks: pl.DataFrame, league_size: int) -> go.Fi
     fig.update_traces(fill='toself', line_color='#007bff')
     fig.update_layout(
         polar=dict(radialaxis=dict(visible=True, showticklabels=False)),
-        height=350,
+        height=500,
         margin=dict(l=40, r=40, t=40, b=20),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',

@@ -103,7 +103,12 @@ app.layout = dbc.Container([
                         ])
                     ], className="h-100")
                 ], md=6)
-            ], className="mt-3")
+            ], className="mt-3"),
+            html.Hr(),
+            dcc.Markdown("""
+            **Value** is a metric calculated based on a player's dynasty Expert Consensus Ranking (ECR). 
+            It represents a normalized score where higher values indicate greater long-term asset value in a dynasty league context.
+            """, className="text-muted fst-italic mt-3")
         ]),
         # --- Trade Values tab ---
         dbc.Tab(label='Trade Values', children=[
@@ -590,13 +595,24 @@ def update_overview_tab(owner_name, draft_data):
         pos_players = user_roster.filter(pl.col('Pos') == pos)
         if not pos_players.is_empty():
             roster_components.append(html.H4(pos, style={'borderBottom': '1px solid #555', 'marginBottom': '5px'}))
-            # Simple list of players
-            player_list = []
+            
+            # Header for the tabular layout
+            header = html.Div([
+                html.Span("Player", style={'fontWeight': 'bold', 'width': '50%'}),
+                html.Span("Team", style={'fontWeight': 'bold', 'width': '15%'}),
+                html.Span("Age", style={'fontWeight': 'bold', 'width': '15%'}),
+                html.Span("Value", style={'fontWeight': 'bold', 'width': '20%', 'textAlign': 'right'}),
+            ], style={'display': 'flex', 'justifyContent': 'space-between', 'padding': '5px 0', 'borderBottom': '1px solid #ccc'})
+            
+            player_list = [header]
+            
             for row in pos_players.iter_rows(named=True):
                 player_list.append(html.Div([
-                    html.Span(row['Player'], style={'fontWeight': 'bold'}),
-                    html.Span(f" ({row['Value']})", style={'color': 'grey', 'fontSize': '0.9em'})
-                ], style={'display': 'flex', 'justifyContent': 'space-between', 'marginBottom': '2px'}))
+                    html.Span(row['Player'], style={'fontWeight': 'bold', 'width': '50%'}),
+                    html.Span(row['Team'], style={'width': '15%'}),
+                    html.Span(row['Age'], style={'width': '15%'}),
+                    html.Span(f"({row['Value']})", style={'color': 'grey', 'fontSize': '0.9em', 'width': '20%', 'textAlign': 'right'}),
+                ], style={'display': 'flex', 'justifyContent': 'space-between', 'padding': '5px 0', 'borderBottom': '1px solid #eee'}))
 
             roster_components.append(html.Div(player_list, style={'marginBottom': '15px'}))
 
@@ -609,6 +625,7 @@ def update_overview_tab(owner_name, draft_data):
     def ordinal(n):
         return "%d%s" % (n, "tsnrhtdd"[(n // 10 % 10 != 1) * (n % 10 < 4) * n % 10::4])
 
+    strength_list_items = []
     for pos in ['Overall', 'QB', 'RB', 'WR', 'TE']:
         rank_row = user_ranks.filter(pl.col('Pos') == pos)
         if not rank_row.is_empty():
@@ -618,24 +635,28 @@ def update_overview_tab(owner_name, draft_data):
             diff = total_val - avg_val
 
             # Color code based on rank (Top third Green, Bottom third Red, else Orange)
-            color = 'orange'
-            if rank <= league_size / 3: color = '#28a745'  # Green
+            rank_color = 'text-warning'
+            if rank <= league_size / 3: rank_color = 'text-success'  # Green
             elif rank >= (2 * league_size) / 3:
-                color = '#dc3545'  # Red
+                rank_color = 'text-danger'  # Red
 
-            diff_color = '#28a745' if diff >= 0 else '#dc3545'
+            diff_color = 'text-success' if diff >= 0 else 'text-danger'
             diff_sign = '+' if diff >= 0 else ''
-
-            strength_components.append(html.Div([
-                html.H4(pos, style={'margin': '0', 'width': '70px'}),
-                html.H4(f"{ordinal(rank)}", style={'margin': '0', 'color': color, 'flex': 1, 'textAlign': 'center'}),
-                html.Div([
-                    html.Span(f"Val: {total_val}", style={'color': 'grey', 'fontSize': '0.9em'}),
-                    html.Span(f" ({diff_sign}{int(diff)})",
-                              style={'color': diff_color, 'fontSize': '0.8em', 'marginLeft': '5px',
-                                     'fontWeight': 'bold'})
-                ], style={'display': 'flex', 'alignItems': 'baseline'})
-            ], style={'display': 'flex', 'alignItems': 'center', 'borderBottom': '1px solid #444', 'padding': '10px 0'}))
+            
+            strength_list_items.append(
+                dbc.ListGroupItem([
+                    html.Div([
+                        html.H5(pos, className="m-0"),
+                        html.Span(f"Rank: {ordinal(rank)}", className=f"fw-bold {rank_color}")
+                    ], className="d-flex justify-content-between align-items-center mb-1"),
+                    html.Div([
+                        html.Small(f"Total Value: {total_val}", className="text-muted"),
+                        html.Small(f"Diff.: {diff_sign}{int(diff)}", className=f"fw-bold {diff_color}")
+                    ], className="d-flex justify-content-between align-items-center")
+                ])
+            )
+            
+    strength_components = dbc.ListGroup(strength_list_items)
 
     # --- Generate Radar Chart ---
     radar_fig = create_team_radar_chart(user_ranks, league_size)

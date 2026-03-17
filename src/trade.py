@@ -27,7 +27,7 @@ def create_trade_values(board_df: pl.DataFrame) -> pl.DataFrame:
     if board_df.is_empty():
         return pl.DataFrame()
 
-    board_columns = ['fantasypros_id', 'Player', 'Pos', 'ECR', 'Age', 'Owner']
+    board_columns = ['fantasypros_id', 'Player', 'Team', 'Pos', 'ECR', 'Age', 'Owner']
     board_df = board_df.select(board_columns)
 
     # # Load in latest dynasty ECR rankings from DynastyProcess
@@ -61,4 +61,4 @@ def create_trade_values(board_df: pl.DataFrame) -> pl.DataFrame:
 
     values_df = values_df.cast({'Value': pl.Int64})
 
-    return values_df.select(['fantasypros_id', 'Player', 'Pos', 'Age', 'Value', 'Owner'])
+    return values_df.select(['fantasypros_id', 'Player', 'Team', 'Pos', 'Age','ECR', 'Value', 'Owner'])
