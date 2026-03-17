@@ -6,6 +6,7 @@ This module defines the layout and callback logic for the Sleeper Dynasty Assist
 import logging
 import polars as pl
 import io
+import tempfile
 
 # --- Dashboard Imports ---
 import dash
@@ -36,8 +37,9 @@ logger = logging.getLogger(__name__)
 from pathlib import Path
 from nflreadpy.config import update_config
 
-cache_dir = Path(__file__).resolve().parent / 'cache'
-update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True, cache_duration=43200) # R
+# Use the system's temporary directory for caching to ensure write access in cloud environments
+cache_dir = Path(tempfile.gettempdir()) / "nflreadpy_cache"
+update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True, cache_duration=43200)
 
 # Initialize the Dash application
 app = dash.Dash(__name__, suppress_callback_exceptions=False, external_stylesheets=[dbc.themes.BOOTSTRAP])
