@@ -32,7 +32,7 @@ cache_dir = Path(__file__).resolve().parent / 'cache'
 update_config(cache_mode="filesystem", cache_dir=cache_dir, verbose=True, cache_duration=3600)
 
 # Initialize the Dash application
-app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = dash.Dash(__name__, suppress_callback_exceptions=False, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 # Server variable
 server = app.server
@@ -65,9 +65,18 @@ app.layout = dbc.Container([
         ]), md=6),
     ], className="mb-3"),
 
-    # --- League ID Alert ---
+    # --- Alerts ---
     dbc.Row([
-        dbc.Col(dbc.Alert(id='league-id-alert', is_open=False, duration=4000), width=12)
+        dbc.Col([
+            dbc.Alert(id='league-id-alert', is_open=False, duration=4000),
+            dbc.Alert(
+                "This page has limited functionality until after the NFL draft at the end of April.",
+                id='offseason-alert',
+                color='warning',
+                is_open=False,
+                dismissable=True
+            )
+        ], width=12)
     ]),
 
     # --- Main Tabbed Interface ---
@@ -499,6 +508,34 @@ def update_owner_dropdown(league_id):
                 "League data loaded successfully!", True, "success")
 
 
+# --- Callback to Check for Offseason/Empty Data ---
+@app.callback(
+    Output('offseason-alert', 'is_open'),
+    [Input('draft-positional-board-store', 'data')]
+)
+def check_offseason_data(pos_data):
+    """
+    Checks if the draft board data is empty (likely due to offseason/pre-draft status).
+    If so, it shows an alert to the user.
+    """
+    if not pos_data:
+        return False  # No data loaded yet
+
+    try:
+        # Load the data to check if it's empty or missing columns
+        df = pl.read_json(io.StringIO(pos_data))
+        
+        # If the dataframe is empty (no rows/columns) or missing the key 'Pos' column
+        if df.is_empty() or 'Pos' not in df.columns:
+            return True
+            
+        return False
+
+    except Exception:
+        # If any error occurs reading the data, assume it's invalid/empty
+        return True
+
+
 # --- Callback to fetch and store league-specific data ---
 @app.callback(
     Output('league-info-store', 'data'),
@@ -528,8 +565,8 @@ def update_overview_tab(owner_name, draft_data):
     """
     Generates the content for the Overview tab:
     1. Left Column: User's roster by position.
-    2. Right Column: Team strength rankings vs the league.
-    3. Right Column: Radar chart of team strength.
+    2. Right Upper Column: Team strength rankings vs the league.
+    3. Right Lower Column: Radar chart of team strength.
     """
     empty_msg = html.Div("Please select a Sleeper league and owner name.", style={'textAlign': 'center', 'color': 'grey'})
 
@@ -670,7 +707,12 @@ def update_draft_table(owner_name, draft_positional_data, draft_overall_data, po
         # Load the full board from the store
         board_df = pl.read_json(io.StringIO(draft_positional_data))
 
-        # Filter for the selected position
+    # Check for empty data before filtering
+    if board_df.is_empty() or 'Pos' not in board_df.columns:
+        return [], [], "", []
+
+    # Filter for the selected position
+    if position != 'Overall':
         board_df = board_df.filter(pl.col('Pos') == position)
 
     # The checklist's value is a list. It's not empty if the box is checked.
@@ -689,7 +731,7 @@ def update_draft_table(owner_name, draft_positional_data, draft_overall_data, po
 
     # --- Generate Conditional Styling & Final Columns ---
     styles = []
-    columns_to_drop = ['fantasypros_id','Best', 'Worst', 'scrape_date']
+    columns_to_drop = ['fantasypros_id', 'Best', 'Worst', 'scrape_date']
 
     # Only apply ownership styling and show Owner column if a league is active
     if 'Owner' in board_df.columns and board_df['Owner'][0] != 'N/A':
@@ -742,6 +784,10 @@ def update_proj_table(owner_name, weekly_data, position, show_taken_value):
 
     # Load the full board from the store
     board_df = pl.read_json(io.StringIO(weekly_data))
+
+    # Check for empty data before filtering
+    if board_df.is_empty() or 'Pos' not in board_df.columns:
+        return [], [], "", []
 
     # Filter for the selected position
     board_df = board_df.filter(pl.col('Pos') == position)
@@ -813,6 +859,11 @@ def update_draft_tier_chart(draft_data, position, owner_name):
 
     # Load and filter the main board data
     board_df = pl.read_json(io.StringIO(draft_data))
+
+    # Check for empty data before filtering
+    if board_df.is_empty() or 'Pos' not in board_df.columns:
+        return dash.no_update
+
     position_df = board_df.filter(pl.col('Pos') == position)
 
     # Apply the tiering algorithm
@@ -853,6 +904,11 @@ def update_weekly_tier_chart(weekly_data, position, owner_name):
 
     # Load and filter the main board data
     board_df = pl.read_json(io.StringIO(weekly_data))
+
+    # Check for empty data before filtering
+    if board_df.is_empty() or 'Pos' not in board_df.columns:
+        return dash.no_update
+
     position_df = board_df.filter(pl.col('Pos') == position)
 
     # Apply the tiering algorithm
