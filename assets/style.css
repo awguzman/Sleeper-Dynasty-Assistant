@@ -1,14 +1,10 @@
-/* --- Import a clean, modern font from Google Fonts --- */
+/* --- Import a font from Google Fonts --- */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@350;650&display=swap');
 
 /* --- Apply global styles to the entire application --- */
 body {
     /* Set the default font for all text */
     font-family: 'Inter', sans-serif;
-
-    /* Define a base background and text color for the app */
-    background-color: White; /* White page background */
-    color: Black; /* Black text */
 }
 
 /* --- Style headers to use the bold weight of the font --- */
@@ -22,52 +18,3 @@ h1, h2, h3, h4, h5, h6 {
     font-family: 'Inter', sans-serif;
 }
 
-/* --- General top level tab styling --- */
-.custom-top-tab {
-    background-color: #e0e0e0; /* Slightly darker than background for unselected tabs */
-    color: #000000;
-    border: 1px solid #cccccc;
-    padding: 10px 15px;
-    font-weight: 350;
-}
-
-/* --- Active top level tab styling --- */
-.custom-top-tab-selected {
-    background-color: White;
-    color: Black;
-    border-top: 2px solid #007bff !Important; /* A thicker border for emphasis */
-    border-left: 2px solid #007bff !Important; /* A thicker border for emphasis */
-    border-right: 2px solid #007bff !Important; /* A thicker border for emphasis */
-    font-weight: bold;
-}
-
-/* --- General nested tab styling --- */
-.custom-nested-tab {
-    background-color: #e0e0e0; /* Slightly darker than background for unselected tabs */
-    color: #000000;
-    border: 1px solid #cccccc;
-    padding: 10px 10px;
-    font-weight: 350;
-}
-
-/* --- Active nested tab styling --- */
-.custom-nested-tab-selected {
-    background-color: White;
-    color: Black;
-    border-top: 0px solid #007bff !Important;
-    border-bottom: 2px solid #007bff !Important; /* A thicker border for emphasis */
-    border-left: 2px solid #007bff !Important; /* A thicker border for emphasis */
-    border-right: 2px solid #007bff !Important; /* A thicker border for emphasis */
-    font-weight: bold;
-}
-
-/* --- Add spacing between top-level and nested tabs --- */
-.nested-tabs-container {
-    margin-top: 10px;
-    padding: 0px 25px
-}
-
-/* --- Add top tab spacing --- */
-.top-tabs-container {
-    padding: 0px 25px
-}
