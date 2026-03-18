@@ -513,6 +513,10 @@ def update_owner_dropdown(n_clicks, n_submit, league_id):
     # Log the attempt to load league data
     logger.info(f"Attempting to load league data for ID: {league_id}")
 
+    # Verify the league_id is a digit for security
+    if not league_id.isdigit():
+        return [], True, [], [], "Invalid League ID provided. League ID must be an integer.", True, "danger"
+
     try:
         league_df = get_league_info(league_id)
 
@@ -579,6 +583,10 @@ def update_league_store(n_clicks, n_submit, league_id):
     """
     if not league_id:
         return None  # Return None if no ID is provided
+
+    # Validate league_id is a digit for security
+    if not league_id.isdigit():
+        return None
 
     logger.info(f"Fetching league info store for ID: {league_id}")
     league_df = get_league_info(league_id)
