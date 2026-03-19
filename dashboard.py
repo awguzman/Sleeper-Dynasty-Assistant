@@ -7,12 +7,14 @@ import logging
 import polars as pl
 import io
 import tempfile
+import time
 
 # --- Dashboard Imports ---
 import dash
 from dash import dcc, html, dash_table
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
 import plotly.graph_objects as go
 
 # --- Import Helper Functions ---
@@ -46,6 +48,10 @@ app = dash.Dash(__name__, suppress_callback_exceptions=False, external_styleshee
 
 # Server variable
 server = app.server
+
+# --- Global Rate Limiter Variables ---
+LAST_REQUEST_TIME = 0
+RATE_LIMIT_SECONDS = 2.0  # Allow 1 request every 2 seconds
 
 # --- App Layout ---
 app.layout = dbc.Container([
@@ -219,10 +225,10 @@ app.layout = dbc.Container([
                                     id='position-draft-selection',
                                     options=[
                                         {'label': 'Overall', 'value': 'Overall'},
-                                        {'label': 'Quarterback', 'value': 'QB'},
-                                        {'label': 'Running Back', 'value': 'RB'},
-                                        {'label': 'Wide Receiver', 'value': 'WR'},
-                                        {'label': 'Tight End', 'value': 'TE'},
+                                        {'label': 'QB', 'value': 'QB'},
+                                        {'label': 'RB', 'value': 'RB'},
+                                        {'label': 'WR', 'value': 'WR'},
+                                        {'label': 'TE', 'value': 'TE'},
                                     ],
                                     value='Overall',
                                     inline=True,
@@ -311,10 +317,10 @@ app.layout = dbc.Container([
                                 dbc.Col(dbc.RadioItems(
                                     id='position-proj-selection',
                                     options=[
-                                        {'label': 'Quarterback', 'value': 'QB'},
-                                        {'label': 'Running Back', 'value': 'RB'},
-                                        {'label': 'Wide Receiver', 'value': 'WR'},
-                                        {'label': 'Tight End', 'value': 'TE'},
+                                        {'label': 'QB', 'value': 'QB'},
+                                        {'label': 'RB', 'value': 'RB'},
+                                        {'label': 'WR', 'value': 'WR'},
+                                        {'label': 'TE', 'value': 'TE'},
                                     ],
                                     value='QB',
                                     inline=True,
@@ -410,10 +416,10 @@ app.layout = dbc.Container([
                             dbc.RadioItems(
                                 id='position-efficiency-selection',
                                 options=[
-                                    {'label': 'QB', 'value': 'QB'},
-                                    {'label': 'RB', 'value': 'RB'},
-                                    {'label': 'WR', 'value': 'WR'},
-                                    {'label': 'TE', 'value': 'TE'}
+                                    {'label': 'Quarterback', 'value': 'QB'},
+                                    {'label': 'Running Back', 'value': 'RB'},
+                                    {'label': 'Wide Receiver', 'value': 'WR'},
+                                    {'label': 'Tight End', 'value': 'TE'}
                                 ],
                                 value='RB',
                                 inline=True,
@@ -485,12 +491,9 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 
-# --- Callbacks to Enable/Disable League-Specific Controls ---
+# --- Callback to fetch and store league-specific data ---
 @app.callback(
-    [Output('owner-name-dropdown', 'options'),
-     Output('owner-name-dropdown', 'disabled'),
-     Output('show-taken-draft-checkbox', 'options'),  # Control options to disable
-     Output('show-taken-proj-checkbox', 'options'),  # Control options to disable
+    [Output('league-info-store', 'data'),
      Output('league-id-alert', 'children'),
      Output('league-id-alert', 'is_open'),
      Output('league-id-alert', 'color')],
@@ -498,46 +501,85 @@ app.layout = dbc.Container([
      Input('league-id-input', 'n_submit')],
     [State('league-id-input', 'value')]
 )
-def update_owner_dropdown(n_clicks, n_submit, league_id):
+def update_league_store(n_clicks, n_submit, league_id):
     """
-    Populates the owner ID dropdown based on the entered league ID. If no league_id provided,
-    disable the dropdown along with the show_taken checkboxes.
+    Fetches league data from the Sleeper API when the league_id changes and stores it as JSON in a dcc.Store.
+    Also handles validation, rate limiting, and alerts.
+    """
+    global LAST_REQUEST_TIME
 
-    This callback is triggered whenever the 'league-id-input' value changes.
-    It fetches the league's user data and formats it for the dropdown.
-    """
-    # Prevent callback from firing with an empty league ID.
+    # If no trigger (initial load), or no league_id provided, do nothing.
+    if not n_clicks and not n_submit:
+        return None, "", False, ""
     if not league_id:
-        return [], True, [], [], None, False, ""
+        return None, "Please enter a Sleeper League ID.", True, "warning"
 
     # Log the attempt to load league data
     logger.info(f"Attempting to load league data for ID: {league_id}")
 
-    # Verify the league_id is a digit for security
+    # Validate league_id is a digit for security and basic correctness
     if not league_id.isdigit():
-        return [], True, [], [], "Invalid League ID provided. League ID must be an integer.", True, "danger"
+        return None, "Invalid League ID provided. League ID must be an integer.", True, "danger"
+
+    # --- Rate Limiting Check ---
+    current_time = time.time()
+    if current_time - LAST_REQUEST_TIME < RATE_LIMIT_SECONDS:
+        logger.warning(f"Rate limit hit. Request rejected for ID: {league_id}")
+        return None, "Too many requests. Please wait a moment before trying again.", True, "warning"
+
+    # Update the timestamp only if we are about to make an external API call
+    LAST_REQUEST_TIME = current_time
 
     try:
         league_df = get_league_info(league_id)
 
         if league_df.is_empty():
             logger.warning(f"No league data found for ID: {league_id}")
-            # Invalid League ID
-            return ([], True, [], [],
-                    "Invalid League ID provided. Please check the ID and try again.", True, "danger")
+            return None, "Invalid League ID provided. No league data found.", True, "danger"
         else:
             logger.info(f"Successfully loaded league data for ID: {league_id}")
+            return league_df.write_json(), "League data loaded successfully!", True, "success"
+    except Exception as e:
+        logger.error(f"Error loading league data for ID {league_id}: {e}")
+        return None, "Invalid League ID provided. No league data found.", True, "danger"
+
+
+# --- Callbacks to Enable/Disable League-Specific Controls ---
+@app.callback(
+    [Output('owner-name-dropdown', 'options'),
+     Output('owner-name-dropdown', 'disabled'),
+     Output('show-taken-draft-checkbox', 'options'),  # Control options to disable
+     Output('show-taken-proj-checkbox', 'options')],  # Control options to disable
+    [Input('league-info-store', 'data')] # Listen to the League Infor Store update
+)
+def update_owner_dropdown(league_data):
+    """
+    Populates the owner ID dropdown based on the data in league-info-store.
+    This callback fires whenever the store is updated by update_league_store.
+    """
+    # If store is empty/None, disable controls and show nothing
+    if not league_data:
+        return [], True, [], []
+
+    try:
+        # Read the data from the store instead of calling the API again
+        league_df = pl.read_json(io.StringIO(league_data))
+
+        if league_df.is_empty():
+            # This case shouldn't happen if update_league_store works correctly,
+            return [], True, [], []
+        else:
             owner_options = (
                 league_df.select(pl.col('owner_name').alias('label'),
                                  pl.col('owner_name').alias('value')).to_dicts())
             checkbox_options = [{'label': 'Show Taken Players', 'value': 'show_taken'}]  # Default control options to enable.
+            
             # Enable the controls on success
-            return (owner_options, False, checkbox_options, checkbox_options,
-                    "League data loaded successfully!", True, "success")
+            return owner_options, False, checkbox_options, checkbox_options
     except Exception as e:
-        logger.error(f"Error loading league data for ID {league_id}: {e}")
-        return ([], True, [], [],
-                "An error occurred while loading league data.", True, "danger")
+        logger.error(f"Error reading league data from store: {e}")
+        # If an error occurs reading from the store, disable controls
+        return [], True, [], []
 
 
 # --- Callback to Check for Offseason/Empty Data ---
@@ -559,7 +601,7 @@ def check_offseason_data(pos_data):
         
         # If the dataframe is empty (no rows/columns) or missing the key 'Pos' column
         if df.is_empty() or 'Pos' not in df.columns:
-            logger.info("Offseason data detected: Positional draft board is empty or missing 'Pos' column.")
+            # logger.info("Offseason data detected: Positional draft board is empty or missing 'Pos' column.")
             return True
             
         return False
@@ -568,29 +610,6 @@ def check_offseason_data(pos_data):
         # If any error occurs reading the data, assume it's invalid/empty
         logger.error(f"Error checking offseason data: {e}")
         return True
-
-
-# --- Callback to fetch and store league-specific data ---
-@app.callback(
-    Output('league-info-store', 'data'),
-    [Input('load-league-button', 'n_clicks'),
-     Input('league-id-input', 'n_submit')],
-    [State('league-id-input', 'value')]
-)
-def update_league_store(n_clicks, n_submit, league_id):
-    """
-    Fetches league data from the Sleeper API when the league_id changes and stores it as JSON in a dcc.Store.
-    """
-    if not league_id:
-        return None  # Return None if no ID is provided
-
-    # Validate league_id is a digit for security
-    if not league_id.isdigit():
-        return None
-
-    logger.info(f"Fetching league info store for ID: {league_id}")
-    league_df = get_league_info(league_id)
-    return league_df.write_json()
 
 
 # --- Callback to Update Overview Tab ---
@@ -655,8 +674,6 @@ def update_overview_tab(owner_name, draft_data):
     roster_title = f"{owner_name}'s Roster"
 
     # --- Build Right Column: Strength Analysis ---
-    strength_components = []
-
     # Helper function for ordinal suffix (1st, 2nd, 3rd)
     def ordinal(n):
         return "%d%s" % (n, "tsnrhtdd"[(n // 10 % 10 != 1) * (n % 10 < 4) * n % 10::4])
@@ -713,7 +730,7 @@ def update_board_stores(league_data):
     This master callback runs the expensive computations once and stores the results.
     It's triggered when the league data becomes available.
     """
-    logger.info("Updating board stores.")
+    # logger.info("Updating board stores.")
     league_df = pl.read_json(io.StringIO(league_data)) if league_data else None
 
     # --- Create and store the full positional draft board ---
@@ -727,8 +744,6 @@ def update_board_stores(league_data):
     # --- Create and store the full weekly board (all positions) ---
     weekly_board_df = create_board(league_df=league_df, draft=False, positional=True)  # positional is ignored
     weekly_data = weekly_board_df.write_json()
-    
-    logger.info("Board stores updated.")
 
     return draft_positional_data, draft_overall_data, weekly_data
 
